@@ -7,8 +7,8 @@ format long
 %% Set the stage
 mypara;
 
-damp_factor = 0.8;
-T = 50000;
+damp_factor = 0.5;
+T = 10000;
 burnin = ceil(0.1*T);
 maxiter = 10000;
 tol = 1e-6;
