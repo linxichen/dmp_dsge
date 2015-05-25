@@ -105,10 +105,10 @@ There is one representative household, of measure one, with a continuum of membe
 \end{eqnarray}
 \noindent where $c_{t}=c_{t}^{i}$, for all $i$, is the per capita consumption of the household and $n_{t}=\int_{i=0}^1n^{i}_tdi$ is the fraction of  employed members. The household's decisions are subject to the budget constraint and the law of motion for employment:
 \begin{eqnarray}
-c_{t} + k_{t+1} - (1-\delta)k_{t} + T_t &=& r_tk_{t} + w_tn_{t} + z_t (1-n_{t}) \\
+c_{t} + k_{t+1} - (1-\delta)k_{t} + \Pi_t &=& r_tk_{t} + w_tn_{t} + z_t (1-n_{t}) \\
 n_{t+1} &=& (1-x)n_{t} + \mu_t(1-n_{t})
 \end{eqnarray}
-\noindent where $T_t$ is a lump-sum tax, $r_t$ rental rate, $w_t$ wage rate, $z_t$ unemployment benefit, $\mu_t$ is the probability of one of its unemployed member finding a job next period, and $x$ is the probability of one of its employed member losing her job next period. Both $\mu_t$ and $x$ are taken as given by the household.
+\noindent where $\Pi_t$ is profit from owning the firm, $r_t$ rental rate, $w_t$ wage rate, $z_t$ efficiency of home production, $\mu_t$ is the probability of one of its unemployed member finding a job next period, and $x$ is the probability of one of its employed member losing her job next period. Both $\mu_t$ and $x$ are taken as given by the household.
 
 % Hence, the relevant states variables for the household problem are 
 
@@ -120,7 +120,7 @@ The household needs to predict the evolution of aggregate state variables to mak
 	\end{equation}
 	subject to
 	\begin{eqnarray}
-	c + k' - (1-\delta)k + T(A,\mathbf{S}) &=& r(A,\mathbf{S})k + w(A,\mathbf{S})n + z(1-n)  \\ 
+	c + k' - (1-\delta)k + \Pi(A,\mathbf{S}) &=& r(A,\mathbf{S})k + w(A,\mathbf{S})n + z(1-n)  \\ 
 	n' &=& (1-x)n + \mu(\theta(A,\mathbf{S}))(1-n)  \\
 	\mathbf{S'} &=& G(A,\mathbf{S})
 	\end{eqnarray}
@@ -170,8 +170,7 @@ Next we define a rational expectation recursive competitive equilibrium (RERCE) 
 	\item Aggregate tightness is consistent with firm's policy functions: $\theta^{*}(A,\mathbf{S})=\frac{v^{*}(A,\mathbf{S})}{1-N}$
 	\item Wage is consistent with Nash Bargaining: $w(A,\mathbf{S}) = \tau A F_{n}(K,N) + (1-\tau)\left[ z+\gamma c^{*}(A,\mathbf{S}) \right] + \tau \kappa \theta^{*}(A,\mathbf{S})$
 	\item Capital market clears: $r(A,\mathbf{S})=AF_{k}(K,N)$
-	\item Goods market clears: $c^{*}+k_{+}^{*}-(1-\delta)k^{*}+\kappa v^{*} = A F(K,N)$
-	\item Government budget balances: $T^{*}(A,\mathbf{S})=z (1-N)$
+	\item Goods market clears: $c^{*}+k_{+}^{*}-(1-\delta)k^{*}+\kappa v^{*} = A F(K,N) + z(1-N)$
 \end{enumerate}
 
 \subsection{Equilibrium Conditions}
@@ -179,7 +178,7 @@ From now on I suppress many subscripts and superscripts and use small case varia
 \begin{eqnarray}
 	\text{[HH's Euler]} & :& \frac{1}{c} =\beta \mathbb{E} \frac{1}{c'} \left[  1-\delta + A'F_{k}(k',n') \right] \label{eqn:HHEuler} \\
 	\text{[Firm's Euler]} & :& \frac{\kappa}{c q(\theta)} = \beta \mathbb{E} \frac{1}{c'} \left\{  (1-\tau) \left[ A'F_{n}(k',n')-z-\gamma c' \right]+(1-x)\frac{\kappa}{q(\theta')} -\tau \kappa \theta' \right\} \label{eqn:firmEuler} \\
-	\text{[Goods Market]} & :& c+k'-(1-\delta)k + \kappa v = AF(k,n) \label{eqn:resource} \\
+	\text{[Goods Market]} & :& c+k'-(1-\delta)k + \kappa v = AF(k,n) + z(1-n)\label{eqn:resource} \\
 	\text{[Tightness]} & :& \theta = \frac{v}{1-n} \label{eqn:tightness}\\
 	\text{[Employment LOM]} & :& n' = (1-x)n+\mu(\theta)(1-n)
 \end{eqnarray}
@@ -191,7 +190,7 @@ If Hosios' condition ($z=0$ and $\tau = 1-\eta$) is satisfied, the decentralized
 	\end{equation}
 	subject to
 	\begin{eqnarray}
-	A F(k,n) &=&  c + k' - (1-\delta)k + \kappa v \\ 
+	A F(k,n) + z(1-n) &=&  c + k' - (1-\delta)k + \kappa v \\ 
 	n' &=& (1-x)n + \xi (1-n)^{1-\eta} v^{\eta}  \\
 	v &\ge& 0
 	\end{eqnarray}
