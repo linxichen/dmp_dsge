@@ -1,0 +1,290 @@
+%==== Preamble Begins====%
+\documentclass[12pt]{article}
+\usepackage{epsfig,graphics,lscape}
+\usepackage{algorithm}
+\usepackage{color}
+\usepackage{natbib} 
+\usepackage{multirow}
+\usepackage{amsmath,amssymb}
+\usepackage{amsthm}
+\usepackage{graphicx}
+\usepackage{setspace}
+\usepackage{booktabs}
+\usepackage{footnote}
+\usepackage{geometry}
+\usepackage{rotating}
+\usepackage[section]{placeins}
+\makesavenoteenv{tabular}
+\usepackage[bottom]{footmisc}
+\usepackage{fmtcount} % displaying latex counters
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{srcltx} % SRC Specials: DVI [Inverse] Search
+
+%==== Customization ====%
+\newcommand{\vectornorm}[1]{\left|\left|\right|\right|}
+\setlength{\textwidth}{7.5in}
+\setlength{\textheight}{9.7in}
+\setlength{\topmargin}{-1in}
+\setlength{\oddsidemargin}{-0.5in}
+\setlength{\evensidemargin}{-0.5in}
+\makeatletter 
+\long\def\@makefigcaption#1#2{%
+\vskip\abovecaptionskip
+\sbox\@tempboxa{\textbf{#1 #2}}%
+\global \@minipagefalse
+\hb@xt@\hsize{\hfil\box\@tempboxa\hfil}%
+\vskip\belowcaptionskip}
+\long\def\@maketblcaption#1#2{%
+\vskip\abovecaptionskip
+\sbox\@tempboxa{\textbf{#1 #2}}%
+\global \@minipagefalse
+\hb@xt@\hsize{\hfil\box\@tempboxa\hfil}%
+\vskip\belowcaptionskip}
+\long\def\symbolfootnote[#1]#2{\begingroup%
+\def\thefootnote{\fnsymbol{footnote}}\footnote[#1]{#2}\endgroup}\renewcommand{\baselinestretch}{1.5}
+\newtheorem{definition}{Definition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\newtheorem{assumption}{Assumption}
+%\newtheorem{algorithm}{Algorithm}
+\newtheorem{remark}{Remark}
+
+%==== Front Matter ====%
+\begin{document}
+
+\title{Solving DMP in DSGE}
+\author{ABC}
+\maketitle
+
+\section{The Model}
+%Rephrase Shime Textbook%
+This article presents a textbook search model in the spirit of Shimer (2010a). The model includes a presentative firm, a presentative household, and a government. Only one good is produced and it can be used as consumption or investment. The goods market is perfectly competitive while the labor market is subject to search friction. In particular, not all vacancies will be filled and not all unemployed workers will find a job.
+
+The representative firm possesses a production technology and a recruiting technology. Production activities involves creating goods by combining labor and capital as inputs. The firm can post vacancies, incurring costs in units of consumption goods, to recruit new workers who start working next period. The number of vacancies that would actually be filled is controlled by a matching function exogenous to the firm's decision. Lastly the firm purchases goods to invest into its capital stock.
+
+The representative household consists of atomistic members. Employed member earns wage income from working and unemployed members gets unemployment benefit from the government. The household collects these income and profit from owning the firm to purchase consumption goods and to pay lump sum taxes. The household would then allocate consumption goods among its members to maximize the sum of members' felicity.
+
+At last, it is worth mentioning that the wage is determined through a Nash bargaining game where the worker and the firm agree on a wage such that the economic surplus is shared accordingly to their bargaining power. Since we don't allow for endogenous separation, a worker-job pair, even though the economic surplus could turn negative at some point in time, will remain matched until exogenously destroyed.
+
+\section{Matching}
+The search friction in the labor market is embodied by a matching function which determines the measure of matches formed. A match is a vacancy filled by an unemployed worker who will start producing next period. Let $V_{t}$ be the measure of vacancy posted at time $t$, and $U_{t}=1-N_{t}$  the measure of unemployed household members, then the matches $M_{t}$ formed is given by a Cobb-Douglas function:
+\[
+M_{t} = \xi V_{t}^{\eta} U_{t}^{1-\eta}.
+\]
+
+Now we can express the job-finding rate i.e. the probability of an unemployed worker finds a job as:
+\[
+\mu_{t} = \frac{M_{t}}{U_{t}}=\frac{\xi V_{t}^{\eta} U^{1-\eta}}{U_{t}} = \xi \theta_{t}^{\eta}
+\]
+\noindent where $\theta_{t} \equiv \frac{V_{t}}{U_{t}}$ is the tightness ratio, or vacancy-unemployment ratio. Similarly the vacancy-filling rate, i.e. the probability of a vacancy gets filled by a unemployed worker, is given by
+\[
+q_{t} = \frac{M_{t}}{V_{t}} = \frac{\xi V_{t}^{\eta} U^{1-\eta}}{V_{t}} = \xi \theta_{t}^{\eta -1}
+\]
+
+\section{Firm's Problem}
+The representative firm chooses the amount of capital services to rent today $k_{t}$ and vacancies $v_{t}$ to maximize present discounted value of profit stream. The discount factor $Q_{t+1}$ is given by household's stochastic discount factor and is taken as given by the firm. For each vacancy posted (with cost $\kappa$ in final goods units), the firm is able to recruit $q(\theta)$ workers next period. In sum, the firm solves the following problem:
+	\begin{equation}
+	J(n,A,\mathbf{S};G) = \max_{v,k} AF(k,n) - w(A,\mathbf{S})n - r(A,\mathbf{S})k - \kappa v + \sum_{A'} \Gamma_{A,A'} Q'J(n',A',\mathbf{S}^{\prime};G)
+	\end{equation}
+	subject to
+	\begin{eqnarray}
+	n' &=& (1-x)n + q(\theta(A,\mathbf{S}))v \\
+	q(\theta) &\equiv& \xi \theta^{\eta-1} \\
+	\mathbf{S}^{\prime} &=& G(A,\mathbf{S}).
+	\end{eqnarray}
+	where $\kappa$ is the cost per vacancy and $q(\theta)$ is the job-filling rate.
+
+\section{Household's Problem}
+
+There is one representative household, of measure one, with a continuum of members indexed by $i \in [0,1] $. Each member $i$ may be employed by a firm (denoted by $n^{i}_{t}=1$) or unemployed ($n^{i}_{t}=0$). With level of consumption $c^{i}_{t}$, her period felicity is $\log(c_{t}^{i}) $ when unemployed and $\log(c_{t}^{i})-\gamma$ when employed. The household equalizes consumption across members and maximizes the sum of member's felicities. Lastly, members of this household discount future utility with a factor of $\beta$. In sum, the household behaves as if trying to maximize the following objective function:
+\begin{eqnarray}
+\mathbb{E}_{0} \sum_{t=0}^{\infty} \beta^{t} \left[ \log(c_{t}) - \gamma n_{t} \right]
+\end{eqnarray}
+\noindent where $c_{t}=c_{t}^{i}$, for all $i$, is the per capita consumption of the household and $n_{t}=\int_{i=0}^1n^{i}_tdi$ is the fraction of  employed members. The household's decisions are subject to the budget constraint and the law of motion for employment:
+\begin{eqnarray}
+c_{t} + k_{t+1} - (1-\delta)k_{t} + T_t &=& r_tk_{t} + w_tn_{t} + z_t (1-n_{t}) \\
+n_{t+1} &=& (1-x)n_{t} + \mu_t(1-n_{t})
+\end{eqnarray}
+\noindent where $T_t$ is a lump-sum tax, $r_t$ rental rate, $w_t$ wage rate, $z_t$ unemployment benefit, $\mu_t$ is the probability of one of its unemployed member finding a job next period, and $x$ is the probability of one of its employed member losing her job next period. Both $\mu_t$ and $x$ are taken as given by the household.
+
+% Hence, the relevant states variables for the household problem are 
+
+\subsection{Recursive Formulation}
+The household needs to predict the evolution of aggregate state variables to make decisions, therefore its problem is a function of such prediction. If the household believes the aggregate state variables evolves according to $\mathbf{S}_{t+1} = G(A_{t},\mathbf{S}_{t})$, the household's problem can be reformulated as a dynamic programming problem (condition on G):
+	
+	\begin{equation}
+	V(k,n,A,\mathbf{S};G) = \max_{c,k'} \quad \log(c) - \gamma n+\beta \sum_{A'} \Gamma_{A,A'} V(k',n',A',\mathbf{S'};G)
+	\end{equation}
+	subject to
+	\begin{eqnarray}
+	c + k' - (1-\delta)k + T(A,\mathbf{S}) &=& r(A,\mathbf{S})k + w(A,\mathbf{S})n + z(1-n)  \\ 
+	n' &=& (1-x)n + \mu(\theta(A,\mathbf{S}))(1-n)  \\
+	\mathbf{S'} &=& G(A,\mathbf{S})
+	\end{eqnarray}
+	and $A$ follows an Markov process whose transition probability is given by $\Gamma$.
+
+
+	
+\subsection{First Order Conditions}
+To ensure interior solution we need to have
+	\[
+	r(A,\mathbf{S}) = AF_{k}(k,n).
+	\]
+Also we can obtain the free-entry condition
+	\[
+	\kappa = \sum_{A'} \Gamma_{A,A'} q(\theta(A,\mathbf{S}))QJ_{n}(n',A',\mathbf{S'};G).
+	\]
+Lastly the envelope condition used in wage bargaining is
+	\[
+	J_{n}(n,A,\mathbf{S};G) =  AF_{n}(k,n) - w(A,\mathbf{S}) + (1-x)\sum_{A'} \Gamma_{A,A'} QJ_{n}(n',A',\mathbf{S'};G).
+	\]
+We can eliminate the value function J using the envelope condition and rewrite the free-entry condition as an Euler Equation:
+	\begin{eqnarray}
+	\kappa = q(\theta(A,\mathbf{S})) \sum_{A'} \Gamma_{A,A'} Q \left[ A'F_{n}(k',n')-w(A',\mathbf{S'})+(1-x)\frac{\kappa}{q(\theta(A',\mathbf{S'}))}\right]
+	\end{eqnarray}
+
+\section{Wage Determination}
+Wage is determined as the solution to the following problem
+	\[
+	\max_{w} J_{n}^{1-\tau}\tilde{V}_{n}^{\tau}
+	\]
+	where the first order condition is given by
+	\[
+	(1-\tau)\tilde{V}c = \tau J_{n}
+	\]
+	with some algebra we can express wage as a function of contemporary variables
+	\begin{equation}
+	w = \tau A F_{n}(k,n) + (1-\tau)(z+\gamma c) + \tau \kappa \theta \label{eqn:wage}
+	\end{equation}
+	
+\section{Equilibrium}
+Next we define a rational expectation recursive competitive equilibrium (RERCE) for our economy. A RERCE is a set of functions $\left\{ V^{*}, c^{*}, k_{+}^{*}, J^{*}, k^{*}, v^{*}, G^{*},T^{*},r^{*},w^{*},\theta^{*} \right\} $, all of them are functions of $(A,\mathbf{S})=(A,K,N)$, such that:
+\begin{enumerate}
+	\item $V^{*},c^{*},k_{+}^{*}$ solves household's problem given $G^{*},T^{*},r^{*},w^{*},\theta^{*}$
+	\item $J^{*},v^{*},k^{*}$ solves firm's problem given $G^{*},r^{*},w^{*},\theta^{*}$
+	\item Firm's choice of capital usage is consistent with aggregate state: $k^{*}(A,\mathbf{S})=K$.
+	\item Law of motion $G^{*}$ is consistent with individual policy functions with $K'=k_{+}^{*}(A,\mathbf{S})$ and $N'=(1-x)N+\mu(\theta^{*}(A,\mathbf{S}))(1-N)$.
+	\item Aggregate tightness is consistent with firm's policy functions: $\theta^{*}(A,\mathbf{S})=\frac{v^{*}(A,\mathbf{S})}{1-N}$
+	\item Wage is consistent with Nash Bargaining: $w(A,\mathbf{S}) = \tau A F_{n}(K,N) + (1-\tau)\left[ z+\gamma c^{*}(A,\mathbf{S}) \right] + \tau \kappa \theta^{*}(A,\mathbf{S})$
+	\item Capital market clears: $r(A,\mathbf{S})=AF_{k}(K,N)$
+	\item Goods market clears: $c^{*}+k_{+}^{*}-(1-\delta)k^{*}+\kappa v^{*} = A F(K,N)$
+	\item Government budget balances: $T^{*}(A,\mathbf{S})=z (1-N)$
+\end{enumerate}
+
+\subsection{Equilibrium Conditions}
+From now on I suppress many subscripts and superscripts and use small case variables to denote equilibrium quantities. I collect equilibrium conditions below to facilitate computation:
+\begin{eqnarray}
+	\text{[HH's Euler]} & :& \frac{1}{c} =\beta \mathbb{E} \frac{1}{c'} \left[  1-\delta + A'F_{k}(k',n') \right] \label{eqn:HHEuler} \\
+	\text{[Firm's Euler]} & :& \frac{\kappa}{c q(\theta)} = \beta \mathbb{E} \frac{1}{c'} \left\{  (1-\tau) \left[ A'F_{n}(k',n')-z-\gamma c' \right]+(1-x)\frac{\kappa}{q(\theta')} -\tau \kappa \theta' \right\} \label{eqn:firmEuler} \\
+	\text{[Goods Market]} & :& c+k'-(1-\delta)k + \kappa v = AF(k,n) \label{eqn:resource} \\
+	\text{[Tightness]} & :& \theta = \frac{v}{1-n} \label{eqn:tightness}\\
+	\text{[Employment LOM]} & :& n' = (1-x)n+\mu(\theta)(1-n)
+\end{eqnarray}
+
+\section{Planner's Problem}
+If Hosios' condition ($z=0$ and $\tau = 1-\eta$) is satisfied, the decentralized equilibrium coincides with a benevolent social planner's solution to the constrained optimization problem:
+	\begin{equation}
+	V(k,n,A) = \max_{c,k',n'}  \log(c) - \gamma n+\beta \mathbb{E} V(k',n',A') 
+	\end{equation}
+	subject to
+	\begin{eqnarray}
+	A F(k,n) &=&  c + k' - (1-\delta)k + \kappa v \\ 
+	n' &=& (1-x)n + \xi (1-n)^{1-\eta} v^{\eta}  \\
+	v &\ge& 0
+	\end{eqnarray}
+	and $A$ follows an Markov process whose transition probability is given by $\Gamma$.
+
+\section{Computation Strategies}
+\subsection{Value Function Iteration}
+Since the model economy isn't efficient (except for some particular choices of parameters), one way to find the equilibrium is to approximate prices (wage, rental rate, and tightness ratio) functions and then iterate to find parameterizations that are consistent with the definition of equilibrium. It should be obvious that we only need to approximate the wage function and the tightness ratio function since we know the analytical form of the rental rate function.We outline the algorithm below in Algorithm \ref{alg:VFI},
+\subsubsection{Algorithm}
+\begin{algorithm}
+	\caption{Value Function Iteration}
+	\label{alg:VFI}
+	\begin{enumerate}
+		\item Discretize the state space in your favorite way.
+		\item Rental rate $r$ is a known function, so we compute $r$ at all discrete grid points.
+		\item Initialize $\hat{\theta}(k,n,A;\phi_{\theta}^{0})$ with parameters $\phi_{\theta}^{0}$ and similarly $\hat{w}(k,n,A;\phi_{w}^{0})$.
+		\item At each iteration $i \ge 0$:
+			\begin{enumerate}
+			\item Solve household's problem given price functions and obtain $\hat{c}$ and $\hat{k'}$.
+			\item Given just obtained $\hat{c}$ and price functions, solve the firm's problem and obtain the policy function for vacancy rate $\hat{v}$.
+			\item Update wage and tightness functions using (\ref{eqn:wage}) and $\theta = \frac{v}{1-n}$. Repeat until the difference in parameterizations is small enough.
+			\end{enumerate}	
+	\end{enumerate}
+\end{algorithm}
+
+\subsection{Parametrized Expectation Algorithm}
+There are many ways to compute desired equilibria. Due to the relatively high dimension of the system, parametrized expectation algorithm (PEA) is appropriate here. Thus I will illustrate some key steps below to describe our strategy. We assume functional forms ($\mathbf{M_{h}}(A,k,n;P_{h}),\mathbf{M_{f}}(A,k,n;P_{f})$), parametrized by $P_{h},P_{f}$ for the two expectation terms in equations \ref{eqn:HHEuler}-\ref{eqn:firmEuler}. Therefore we can rewrite equations \ref{eqn:HHEuler}-\ref{eqn:firmEuler} as:
+
+\begin{eqnarray}
+	\text{[HH's Euler*]} & :& \frac{1}{c} =\beta  \label{eqn:HHEuler*} \mathbf{M_{h}}(A,k,n;P_{h}) \\
+	\text{[Firm's Euler*]} & :& \frac{\kappa}{c q(\theta)} = \beta \mathbf{M_{f}}(A,k,n;P_{h}).
+	\label{eqn:firmEuler*}
+\end{eqnarray}
+
+Immediately we can solve for $c,\theta$ given $(A,k,n)$. From the definition o tightness we can find $v=(1-n)\theta$. From the goods market we can back out capital tomorrow $k'=AF(k,n)-c+(1-\delta)k-\kappa v$. We then can find $n'$ from the law of motion of employment. \par
+
+From these steps we simulate a long path of equilibrium given parameters. With simulated equilibrium quantities we can regress $\frac{1}{c_{t+1}} \left[  1-\delta + A_{t+1}F_{k}(k_{t+1},n_{t+1}) \right]$ on $(A_{t},k_{t},n_{t})$ to update parameters $P_{h}$. Similar procedure can be used to update $P_{f}$. \par
+
+In particular, we assume the expectation functions take the form of:
+\begin{eqnarray}
+	\mathbf{M_{h}}(A,k,n;P_{h})	&=& \exp( P_{h}^0 + P_{h}^1 \log(A_t) + P_{h}^2 \log(k_t) + P_{h}^3 \log(n_t)) \\
+	\mathbf{M_{f}}(A,k,n;P_{f})	&=& \exp( P_{f}^0 + P_{f}^1 \log(A_t) + P_{f}^2 \log(k_t) + P_{f}^3 \log(n_t)).
+\end{eqnarray}
+We outline the algorithm below in Algorithm \ref{alg:PEA}.
+\begin{algorithm}
+	\caption{Traditional PEA}
+	\label{alg:PEA}
+	\begin{enumerate}
+		\item Initialize parameters $P_{h},P_{f}$
+		\item Begin at steady states $(A_0,k_0,n_0)$, simulate forward the economy T periods:
+			\begin{enumerate}
+				\item At each period $t \geq 0$, solve for $c_t=\frac{1}{\beta \mathbf{M_{h}}(A_t,k_t,n_t;P_{h})}$, and $\theta_t = (\frac{\kappa}{c \xi \beta \mathbf{M_{f}}(A_t,k_t,n_t;P_{h})})^{\frac{1}{\eta-1} }$
+				\item Find vacancy rate $v_t=\theta_t (1-n_t)$ from equation \ref{eqn:tightness}
+				\item Find capital tomorrow $k_{t+1}=A_t F(k_t,n_t)-c_t+(1-\delta)k_t-\kappa v_t$ from equation \ref{eqn:resource}
+				\item Update $n_{t+1} = (1-x)n_t + \xi \theta_{t}^{\eta}(1-n_t)$.
+				\item Compute operands inside expectations
+					\begin{eqnarray}
+						m_{h,t} &=& \frac{1}{c_t} \left[  1-\delta + A_t F_{k}(k_t,n_t) \right] \\
+						m_{f,t} &=& \frac{1}{c_t} \left\{  (1-\tau) \left[ A_t F_{n}(k_t,n_t)-z-\gamma c_t \right]+(1-x)\frac{\kappa}{\xi}\theta_t^{1-\eta}-\tau \kappa \theta_t \right\} 
+					\end{eqnarray}
+				\item Draw $A_{t+1}$ from discrete distribution $\Gamma_{A_t,A_{t+1}}$.
+				\item Move forward to $t+1$.
+			\end{enumerate}
+		\item Run nonlinear regression 
+			\begin{eqnarray}
+				m_{h,t+1} &=& \exp( P_{h}^0 + P_{h}^1 \log(A_t) + P_{h}^2 \log(k_t) + P_{h}^3 \log(n_t)) + \epsilon_{h,t+1}\\
+				m_{f,t+1} &=& \exp( P_{f}^0 + P_{f}^1 \log(A_t) + P_{f}^2 \log(k_t) + P_{f}^3 \log(n_t)) + \epsilon_{f,t+1}.
+			\end{eqnarray}
+			to update parameters.
+	\end{enumerate}
+\end{algorithm}
+
+\bibliographystyle{chicago}	
+% \bibliography{myrefs}	
+
+  
+\end{document}
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
