@@ -1,0 +1,8 @@
+
+*.aux
+
+Model/model.log
+
+Model/model.pdf
+
+Model/model.synctex.gz
