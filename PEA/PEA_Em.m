@@ -176,9 +176,9 @@ figure
 plot(Kgrid,EEerror(ceil(nA/2),:,ceil(nnn/2)))
 
 %% Implied policy functions and find wages
-Agrid = csvread('../code/201505181149/results/Agrid.csv');
-Kgrid = csvread('../code/201505181149/results/Kgrid.csv');
-Ngrid = csvread('../code/201505181149/results/Ngrid.csv');
+Agrid = csvread('../CUDA_VFI/results/Agrid.csv');
+Kgrid = csvread('../CUDA_VFI/results/Kgrid.csv');
+Ngrid = csvread('../CUDA_VFI/results/Ngrid.csv');
 nA = length(Agrid);
 nk = length(Kgrid);
 nnn = length(Ngrid);
@@ -211,7 +211,7 @@ for i_k = 1:nk
             mf = ( (1-ttau)*((1-aalpha)*y/n-z-ggamma*c) + (1-x)*kkappa/xxi*ttheta^(1-eeta) - ttau*kkappa*ttheta )/c;
             w = ttau*A*k^(aalpha)*(1-aalpha)*n^(-aalpha) + (1-ttau)*(z+ggamma*c) + ttau*kkappa*ttheta;
     
-            kk(i_A,i_k,i_n) = y - c +(1-ddelta)*k - kkappa*v;
+            kk(i_A,i_k,i_n) = y - c +(1-ddelta)*k - kkappa*v + z*(1-nn(i_A,i_k,i_n));
             nn(i_A,i_k,i_n) = (1-x)*n + xxi*ttheta^(eeta)*(1-n);
             cc(i_A,i_k,i_n) = c;
             vv(i_A,i_k,i_n) = v;
@@ -227,11 +227,11 @@ for i_k = 1:nk
     end
 end
 save('PEA_Em.mat');
-csvwrite('../code/201505181149/wage_export.csv',wage_export(:));
-csvwrite('../code/201505181149/ttheta_export.csv',ttheta_export(:));
-csvwrite('../code/201505181149/cPEA_export.csv',cc(:));
-csvwrite('../code/201505181149/kPEA_export.csv',kk(:));
-csvwrite('../code/201505181149/nPEA_export.csv',nn(:));
+csvwrite('../CUDA_VFI/wage_export.csv',wage_export(:));
+csvwrite('../CUDA_VFI/ttheta_export.csv',ttheta_export(:));
+csvwrite('../CUDA_VFI/cPEA_export.csv',cc(:));
+csvwrite('../CUDA_VFI/kPEA_export.csv',kk(:));
+csvwrite('../CUDA_VFI/nPEA_export.csv',nn(:));
 
 
 i_mid_n = ceil(nnn/2);
