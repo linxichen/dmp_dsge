@@ -23,8 +23,8 @@ Emhsim = ksim;
 if (exist('PEA_Em.mat','file')==2)
     load('PEA_Em.mat','coeff_mh','coeff_mf')
 else
-    coeff_mh = [2.9741; -0.2324; -0.5963; -0.0059]; % one constant, each for state variable
-    coeff_mf = [2.7587; 1.3230; -0.2975; -0.1251];
+    coeff_mh = [2.197278872016918; -0.030892629079668; -0.581445054648990; -0.004225383144729]; % one constant, each for state variable
+    coeff_mf = [2.281980399764238; 1.729203578753512; -0.315489670998162; -0.115805845378316];
 end
 
 % coeff_mf = [-2.57+0.37*(7.25)+1.67*(-0.006); +3.06; -0.37];
