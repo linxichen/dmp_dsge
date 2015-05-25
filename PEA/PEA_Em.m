@@ -8,9 +8,9 @@ format long
 mypara;
 
 damp_factor = 0.8;
-T = 100000;
+T = 50000;
 burnin = ceil(0.1*T);
-maxiter = 100000;
+maxiter = 10000;
 tol = 1e-6;
 ksim = zeros(1,T);
 nsim = ksim;
@@ -73,7 +73,7 @@ for t = 1:T
     mfsim(t) = ( (1-ttau)*((1-aalpha)*y/nsim(t)-z-ggamma*c) + (1-x)*kkappa/xxi*ttheta^(1-eeta) - ttau*kkappa*ttheta )/c;
     
     if (t<T)
-        ksim(t+1) = y - c +(1-ddelta)*ksim(t) - kkappa*v;
+        ksim(t+1) = y - c +(1-ddelta)*ksim(t) - kkappa*v + z*(1-nsim(t));
         nsim(t+1) = (1-x)*nsim(t) + xxi*ttheta^(eeta)*(1-nsim(t));
         
         % Find expected mf and mh
@@ -147,7 +147,7 @@ for i_A = 1:nA
             c = (bbeta*EM(1))^(-1);
             ttheta = (kkappa/(c*xxi*bbeta*EM(2)))^(1/(eeta-1));
             v = ttheta*(1-n);
-            kplus = y - c +(1-ddelta)*k - kkappa*v;
+            kplus = y - c +(1-ddelta)*k - kkappa*v + z*(1-n);
             nplus = (1-x)*n + xxi*ttheta^(eeta)*(1-n);
             
             % Find expected mf and mh and implied consumption
