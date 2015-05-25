@@ -1,7 +1,7 @@
 #define nA 11
-#define nk 1001
-#define nn 1001
-#define tol 1e-1
+#define nk 501
+#define nn 501
+#define tol 1e-5
 #define maxiter 10000
 #define maxouteriter 1
 #define kwidth 0.08
@@ -79,7 +79,7 @@ struct update
 		int max_kind = 0;
 		int max_nind = 0;
 		double max_V;
-		for (int i_nplus = 0; i_nplus < nn; i_nplus++) {
+		for (int i_nplus = left_n_idx; i_nplus < nn; i_nplus++) {
 			// Guess tomorrow employment
 			double nplus = N[i_nplus];
 			if (nplus < (1-p.x)*n) {
@@ -262,7 +262,7 @@ int main(int argc, char ** argv)
 	para p;
 	p.bbeta = 0.999;
 	p.aalpha = 0.33;
-	p.xxi = 1.355;
+	p.xxi = 1.390;
 	p.eeta = 0.4;
 	p.ttau = 1.0-p.eeta;
 	p.x = 0.0081;
@@ -273,7 +273,7 @@ int main(int argc, char ** argv)
 	p.Abar = 1;
 	p.kkappa = 0.913920491823929;
 	p.z = 2.921277834700383;
-	p.ggamma = 0.353783523150495;
+	p.ggamma = 0.347023184689287;
 	p.ddelta = 0.001540001540002;
 	p.rr = 0.4;
 	p.z_HM = 0.4;
@@ -434,28 +434,28 @@ int main(int argc, char ** argv)
 		}
 
 		// Policy update for k = 30
-		// for (int p_step = 0; p_step < 21; p_step++) {
-		// 	cublasDgemm(handle,
-		// 			CUBLAS_OP_T,  
-		// 			CUBLAS_OP_T,
-		// 			nk*nn, nA, nA,
-		// 			&alpha,
-		// 			d_V_ptr, 
-		// 			nA, 
-		// 			d_P_ptr,
-		// 			nA,
-		// 			&beta,
-		// 			d_EV_ptr,
-		// 			nk*nn);
+		for (int p_step = 0; p_step < 21; p_step++) {
+			cublasDgemm(handle,
+					CUBLAS_OP_T,  
+					CUBLAS_OP_T,
+					nk*nn, nA, nA,
+					&alpha,
+					d_V_ptr, 
+					nA, 
+					d_P_ptr,
+					nA,
+					&beta,
+					d_EV_ptr,
+					nk*nn);
 
-		// 	thrust::for_each(
-		// 			begin,
-		// 			end,
-		// 			policyupdate(d_A_ptr, d_K_ptr, d_N_ptr, d_EV_ptr, d_copt_ptr, d_vopt_ptr, d_kopt_ptr, d_nopt_ptr, d_koptind_ptr, d_noptind_ptr, d_Vplus_ptr, p)
-		// 			);
+			thrust::for_each(
+					begin,
+					end,
+					policyupdate(d_A_ptr, d_K_ptr, d_N_ptr, d_EV_ptr, d_copt_ptr, d_vopt_ptr, d_kopt_ptr, d_nopt_ptr, d_koptind_ptr, d_noptind_ptr, d_Vplus_ptr, p)
+					);
 
-		// 	d_V = d_Vplus;
-		// };
+			d_V = d_Vplus;
+		};
 	};
 
 	//==========cuBLAS stuff ends=======================
