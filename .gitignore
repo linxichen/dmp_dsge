@@ -8,3 +8,23 @@ Model/model.pdf
 Model/model.synctex.gz
 
 PEA/DMP_RBC_PARAS.mat
+
+Dynare/dmp_dsge_dynamic.m
+
+Dynare/dmp_dsge_IRF_eps1.eps
+
+Dynare/dmp_dsge_IRF_eps2.eps
+
+Dynare/dmp_dsge_results.mat
+
+Dynare/dmp_dsge_set_auxiliary_variables.m
+
+Dynare/dmp_dsge_static.m
+
+Dynare/dmp_dsge.log
+
+Dynare/dmp_dsge.m
+
+Dynare/matlab.mat
+
+Dynare/DMP_RBC_PARAS.mat
