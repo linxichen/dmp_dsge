@@ -28,3 +28,9 @@ Dynare/dmp_dsge.m
 Dynare/matlab.mat
 
 Dynare/DMP_RBC_PARAS.mat
+
+*.csv
+
+*.eps
+
+*.mat
