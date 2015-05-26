@@ -316,7 +316,7 @@ int main(int argc, char ** argv)
 	thrust::host_vector<int> h_noptind(nk*nA*nn);
 
 	// Load previous results
-    load_vec(h_V,"./results/Vguess.csv"); // in #include "cuda_helpers.h"
+    load_vec(h_V,"./results/Vgrid.csv"); // in #include "cuda_helpers.h"
 
 	// Create capital grid
 	double minK = (1.0-kwidth)*p.k_ss;

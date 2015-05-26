@@ -11,7 +11,7 @@ damp_factor = 0.5;
 T = 10000;
 burnin = ceil(0.1*T);
 maxiter = 10000;
-tol = 1e-6;
+tol = 1e-5;
 ksim = zeros(1,T);
 nsim = ksim;
 Asim = ksim;
@@ -36,10 +36,9 @@ regeqn_mf = @(b,x) exp(b(1)*x(:,1)+b(2).*log(x(:,2))+b(3).*log(x(:,3))+b(4).*log
 
 
 %% Solve for SS
-init_ss = [k_ss,0.3,0.8,0.1,2];
-ss = fsolve(@steadystate,init_ss);
-kss = ss(1);
-nss = ss(2);
+kss = k_ss;
+nss = n_ss;
+
 
 %% Simulate shocks
 rng('default')
@@ -227,11 +226,6 @@ for i_k = 1:nk
     end
 end
 save('PEA_Em.mat');
-csvwrite('../CUDA_VFI/wage_export.csv',wage_export(:));
-csvwrite('../CUDA_VFI/ttheta_export.csv',ttheta_export(:));
-csvwrite('../CUDA_VFI/cPEA_export.csv',cc(:));
-csvwrite('../CUDA_VFI/kPEA_export.csv',kk(:));
-csvwrite('../CUDA_VFI/nPEA_export.csv',nn(:));
 
 
 i_mid_n = ceil(nnn/2);
@@ -313,11 +307,21 @@ v = [n1(2:end)-n1(1:end-1) 0];
 figure
 quiver(xx,y,u,v,scale,'Linewidth',0.3);
 
+
+
+wage_export = wage_export(:);
+ttheta_export = ttheta_export(:);
+cc = cc(:);
+kk = kk(:);
+nn = nn(:);
+dlmwrite('../CUDA_VFI/wage_export.csv',wage_export,'precision',16);
+dlmwrite('../CUDA_VFI/ttheta_export.csv',ttheta_export,'precision',16);
+dlmwrite('../CUDA_VFI/cPEA_export.csv',cc,'precision',16);
+dlmwrite('../CUDA_VFI/kPEA_export.csv',kk,'precision',16);
+dlmwrite('../CUDA_VFI/nPEA_export.csv',nn,'precision',16);
+
+
 save('PEA_Em.mat');
-
-
-
-
 
 
 
