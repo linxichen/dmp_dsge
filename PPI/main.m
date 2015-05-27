@@ -56,7 +56,7 @@ nopt_cheby = -1 + (nopt-minN)/(maxN-minN)*2;
 pphi = zeros(K,1); % coefficients of value function w.r.t basis
 [n_nodes,epsi_nodes,weight_nodes] = GH_Quadrature(7,1,1);
 controls = zeros(N,2); exitflag = zeros(N,1);
-options = optimoptions('fmincon','Algorithm','interior-point','AlwaysHonorConstraints','bounds','Display','notify-detailed');
+options = optimoptions('fmincon','Algorithm','sqp','AlwaysHonorConstraints','bounds','Display','notify-detailed');
 
 %% Given value find policy function
 parfor i = 1:N
