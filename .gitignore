@@ -34,3 +34,5 @@ Dynare/DMP_RBC_PARAS.mat
 *.eps
 
 *.mat
+
+*.m~
