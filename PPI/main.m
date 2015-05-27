@@ -4,18 +4,20 @@ clear;
 close all;
 addpath(genpath('tools'));
 addpath(genpath('../PEA'))
-
-
+tic
 
 
 %% Accuracy Control
 mypara;
 minA = 0.4; maxA = 1.6;
 minK = 1000; maxK = 2000;
-minN = 0.1; maxN = 0.999;
-degree = 5;
+minN = 0.5; maxN = 0.999;
+degree = 3;
 tol = 1e-3;
-damp = 0.5;
+damp = 0.2;
+nA = 11;
+nK = 11;
+nN = 11;
 
 %% Encapsulate all parameters
 param = [... 
@@ -36,24 +38,24 @@ param = [...
  ];
 %% Grid generation
 % Agrid = ChebyshevRoots(degree,'Tn',[minA,maxA]);
-Agrid = ChebyshevRoots(21,'Tn',[0.7,1.3]);
-Kgrid = ChebyshevRoots(51,'Tn',[1100,1600]);
-Ngrid = ChebyshevRoots(51,'Tn',[0.85,0.99]);
-Achebygrid = ChebyshevRoots(degree,'Tn');
-Kchebygrid = ChebyshevRoots(degree,'Tn');
-Nchebygrid = ChebyshevRoots(degree,'Tn');
+Agrid = ChebyshevRoots(nA,'Tn',[0.7,1.3]);
+Kgrid = ChebyshevRoots(nK,'Tn',[1100,1600]);
+Ngrid = ChebyshevRoots(nN,'Tn',[0.85,0.99]);
+Achebygrid = ChebyshevRoots(nA,'Tn');
+Kchebygrid = ChebyshevRoots(nK,'Tn');
+Nchebygrid = ChebyshevRoots(nN,'Tn');
 [fakebasis,order_table] = ChebyshevND(degree,[0,0,0]);
-N = degree^3; K = size(order_table,1);
+N = nA*nK*nN; K = size(order_table,1);
 P = zeros(N,K);
 parfor i = 1:N
-    [i_a,i_k,i_n] = ind2sub([degree,degree,degree],i);
+    [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);
     P(i,:) = ChebyshevND(degree,[Achebygrid(i_a),Kchebygrid(i_k),Nchebygrid(i_n)]); %#ok<PFBNS>
 end
 
 %% Precomputation
 tot_stuff = zeros(N,1); ustuff = zeros(N,1);
 parfor i = 1:N
-    [i_a,i_k,i_n] = ind2sub([degree,degree,degree],i);
+    [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);
     a = Agrid(i_a); k  = Kgrid(i_k); n = Ngrid(i_n); %#ok<PFBNS>
     tot_stuff(i) = a*k^aalpha*n^(1-aalpha) + (1-ddelta)*k + z*(1-n);
     ustuff(i) = xxi*(1-n)^(1-eeta);
@@ -65,8 +67,8 @@ kopt = k_ss*ones(N,1);
 kopt_cheby = -1 + (kopt-minK)/(maxK-minK)*2;
 nopt = n_ss*ones(N,1);
 nopt_cheby = -1 + (nopt-minN)/(maxN-minN)*2;
-pphi = 0.01*ones(K,1); % coefficients of value function w.r.t basis
-[n_nodes,epsi_nodes,weight_nodes] = GH_Quadrature(7,1,1);
+pphi = zeros(K,1); % coefficients of value function w.r.t basis
+[n_nodes,epsi_nodes,weight_nodes] = GH_Quadrature(10,1,1);
 policy = zeros(N,2); exitflag = zeros(N,1); util = zeros(N,1);
 options = optimoptions('fmincon','Algorithm','sqp','AlwaysHonorConstraints','bounds','Display','notify-detailed');
 
@@ -74,7 +76,7 @@ value_diff = 10;
 while value_diff > tol
     %% Given value find policy function
     parfor i = 1:N
-        [i_a,i_k,i_n] = ind2sub([degree,degree,degree],i);
+        [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);
         a = Agrid(i_a); k  = Kgrid(i_k); n = Ngrid(i_n); %#ok<PFBNS>
         lb = [minK,(1-x)*n]; ub = [maxK,maxN];
         state = [a,k,n,tot_stuff(i),ustuff(i)];
@@ -85,7 +87,7 @@ while value_diff > tol
     %% Given policy find value function
     EP = zeros(N,K);
     parfor i = 1:N
-        [i_a,i_k,i_n] = ind2sub([degree,degree,degree],i);
+        [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);
         a = Agrid(i_a);
         
         % GH to find EP given policy function
@@ -108,7 +110,7 @@ while value_diff > tol
     
     %% Find utility and regress
     parfor i = 1:N
-        [i_a,i_k,i_n] = ind2sub([degree,degree,degree],i);
+        [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);
         a = Agrid(i_a); k = Kgrid(i_k); n = Ngrid(i_n);
         kplus = policy(i,1);
         nplus = policy(i,2);
@@ -126,5 +128,6 @@ while value_diff > tol
     
 end
 
-%%
+%% End game
+tic
 save
