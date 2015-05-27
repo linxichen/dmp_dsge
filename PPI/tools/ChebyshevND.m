@@ -5,13 +5,13 @@ function [basis,order_table] = ChebyshevND(degree,input)
 x_length = length(input);
 n = x_length;
 d = degree;
-if isint(degree) == 0
+if mod(degree,1) ~= 0
     error('Degree not integer');
 elseif degree == 0
     basis = 1;
     order_table = zeros(1,x_length);
 else
-    [basis,order_table] = Chebyshev3d(degree-1,input);
+    [basis,order_table] = ChebyshevND(degree-1,input);
     % Beautiful algorithm from Roger Stafford on MATLAB central
     c = nchoosek(1:d+n-1,n-1);
     m = size(c,1);

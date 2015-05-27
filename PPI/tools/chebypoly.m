@@ -11,7 +11,7 @@ if (x>1 || x<-1)
     error('argument is not bounded in [-1,1]');
 end
 
-if (isint(p)==0)
+if (mod(p,1)~=0)
     error('order is not an integer.');
 end
 
