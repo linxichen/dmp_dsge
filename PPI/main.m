@@ -10,10 +10,12 @@ addpath(genpath('../PEA'))
 
 %% Accuracy Control
 mypara;
-minA = 0.1; maxA = 1.9;
-minK = 0.5*k_ss; maxK = 1.5*k_ss;
+minA = 0.4; maxA = 1.6;
+minK = 1000; maxK = 2000;
 minN = 0.1; maxN = 0.999;
-degree = 10;
+degree = 5;
+tol = 1e-3;
+damp = 0.5;
 
 %% Encapsulate all parameters
 param = [... 
@@ -34,9 +36,9 @@ param = [...
  ];
 %% Grid generation
 % Agrid = ChebyshevRoots(degree,'Tn',[minA,maxA]);
-Agrid = linspace(0.75,1.25,11);
-Kgrid = ChebyshevRoots(degree,'Tn',[minK,maxK]);
-Ngrid = ChebyshevRoots(degree,'Tn',[minN,maxN]);
+Agrid = ChebyshevRoots(21,'Tn',[0.7,1.3]);
+Kgrid = ChebyshevRoots(51,'Tn',[1100,1600]);
+Ngrid = ChebyshevRoots(51,'Tn',[0.85,0.99]);
 Achebygrid = ChebyshevRoots(degree,'Tn');
 Kchebygrid = ChebyshevRoots(degree,'Tn');
 Nchebygrid = ChebyshevRoots(degree,'Tn');
@@ -48,28 +50,81 @@ parfor i = 1:N
     P(i,:) = ChebyshevND(degree,[Achebygrid(i_a),Kchebygrid(i_k),Nchebygrid(i_n)]); %#ok<PFBNS>
 end
 
+%% Precomputation
+tot_stuff = zeros(N,1); ustuff = zeros(N,1);
+parfor i = 1:N
+    [i_a,i_k,i_n] = ind2sub([degree,degree,degree],i);
+    a = Agrid(i_a); k  = Kgrid(i_k); n = Ngrid(i_n); %#ok<PFBNS>
+    tot_stuff(i) = a*k^aalpha*n^(1-aalpha) + (1-ddelta)*k + z*(1-n);
+    ustuff(i) = xxi*(1-n)^(1-eeta);
+end
+
+
 %% Initialize policy function and value functions
 kopt = k_ss*ones(N,1);
 kopt_cheby = -1 + (kopt-minK)/(maxK-minK)*2;
 nopt = n_ss*ones(N,1);
 nopt_cheby = -1 + (nopt-minN)/(maxN-minN)*2;
-pphi = zeros(K,1); % coefficients of value function w.r.t basis
+pphi = 0.01*ones(K,1); % coefficients of value function w.r.t basis
 [n_nodes,epsi_nodes,weight_nodes] = GH_Quadrature(7,1,1);
-controls = zeros(N,2); exitflag = zeros(N,1);
+policy = zeros(N,2); exitflag = zeros(N,1); util = zeros(N,1);
 options = optimoptions('fmincon','Algorithm','sqp','AlwaysHonorConstraints','bounds','Display','notify-detailed');
 
-%% Given value find policy function
-parfor i = 1:N
-    [i_a,i_k,i_n] = ind2sub([degree,degree,degree],i);
-    a = Agrid(i_a); k  = Kgrid(i_k); n = Ngrid(i_n); %#ok<PFBNS>
-    tot_stuff = a*k^aalpha*n^(1-aalpha) + (1-ddelta)*k + z*(1-n);
-    ustuff = xxi*(1-n)^(1-eeta);
-    lb = [minK,(1-x)*n]; ub = [maxK,maxN];
-    state = [a,k,n,tot_stuff,ustuff];
-    objfunc = @(x) -rhsvalue(state,x,param,pphi,epsi_nodes,weight_nodes,n_nodes);
-    [controls(i,:),~,exitflag(i)] = fmincon(objfunc,[k,0.95*((1-x)*n)+0.05*(1-(1-x)*n)],[],[],[],[],lb,ub,[],options);
+value_diff = 10;
+while value_diff > tol
+    %% Given value find policy function
+    parfor i = 1:N
+        [i_a,i_k,i_n] = ind2sub([degree,degree,degree],i);
+        a = Agrid(i_a); k  = Kgrid(i_k); n = Ngrid(i_n); %#ok<PFBNS>
+        lb = [minK,(1-x)*n]; ub = [maxK,maxN];
+        state = [a,k,n,tot_stuff(i),ustuff(i)];
+        objfunc = @(x) -rhsvalue(state,x,param,pphi,epsi_nodes,weight_nodes,n_nodes);
+        [policy(i,:),~,exitflag(i)] = fmincon(objfunc,[k,0.95*((1-x)*n)+0.05*(1-(1-x)*n)],[],[],[],[],lb,ub,[],options);
+    end
+    
+    %% Given policy find value function
+    EP = zeros(N,K);
+    parfor i = 1:N
+        [i_a,i_k,i_n] = ind2sub([degree,degree,degree],i);
+        a = Agrid(i_a);
+        
+        % GH to find EP given policy function
+        kplus = policy(i,1); nplus = policy(i,2);
+        kplus_cheby = -1 + 2*(kplus-minK)/(maxK-minK);
+        nplus_cheby = -1 + 2*(nplus-minN)/(maxN-minN);
+        
+        for i_node = 1:n_nodes
+            eps = epsi_nodes(i_node);
+            aplus = exp(rrho*log(a) + ssigma*eps);
+            aplus_cheby = -1 + 2*(aplus-minA)/(maxA-minA);
+            if ((aplus_cheby > 1) || (aplus_cheby < -1))
+                a
+                aplus
+            end
+            temp_EP = ChebyshevND(degree,[aplus_cheby kplus_cheby nplus_cheby]);
+            EP(i,:) = EP(i,:) + weight_nodes(i_node)*temp_EP;
+        end
+    end
+    
+    %% Find utility and regress
+    parfor i = 1:N
+        [i_a,i_k,i_n] = ind2sub([degree,degree,degree],i);
+        a = Agrid(i_a); k = Kgrid(i_k); n = Ngrid(i_n);
+        kplus = policy(i,1);
+        nplus = policy(i,2);
+        v = ((nplus - (1-x)*n)/ustuff(i))^(1/eeta); % v is guaranteed to be positive outside
+        c = tot_stuff(i) - kplus - kkappa*v;
+        util(i) = log(c) - ggamma*n;
+    end
+    X = (P - bbeta*EP);
+    pphi_temp = (X'*X)\(X'*util);
+    pphi_new = (1-damp)*pphi_temp + damp*pphi; 
+    
+    %% Find diff
+    value_diff = norm(pphi_new-pphi,inf)
+    pphi = pphi_new;
+    
 end
-
 
 %%
 save
