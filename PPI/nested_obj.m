@@ -14,8 +14,8 @@ kplus = control(1);
 nplus = control(2);
 vacancy = ((nplus - (1-x)*n)/ustuff)^(1/eeta);
 consumption = tot_stuff - kplus - kkappa*vacancy;
-c(1) = 1e-10 - consumption;
-c(2) = 1e-10 - vacancy;
+c(1) = - consumption;
+c(2) = -vacancy;
 ceq = 0;
 
 end
