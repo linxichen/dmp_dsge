@@ -4,18 +4,26 @@ function [x,exitflag] = nested_obj(state,param,pphi,epsi_nodes,weight_nodes,n_no
 
 function [c,ceq] = pos_constraint(control)
 % This function calculates implied consumption and vacancy value such that they are positive
- ggamma = param(2); % 2
- kkappa = param(3); % 3
- eeta = param(4); % 4
- x = param(14);
+kkappa = param(3); % 3
+eeta = param(4); % 4
+x = param(14);
+minK = param(9); %9
+maxK = param(10); %10
+minN = param(11); % 11
+maxN = param(12); % 12
 
 a = state(1); k = state(2); n = state(3); tot_stuff = state(4); ustuff = state(5);
-kplus = control(1);
-nplus = control(2);
-vacancy = ((nplus - (1-x)*n)/ustuff)^(1/eeta);
-consumption = tot_stuff - kplus - kkappa*vacancy;
-c(1) = - consumption;
-c(2) = -vacancy;
+consumption = control(1);
+vacancy = control(2);
+
+kplus = tot_stuff - consumption - kkappa*vacancy;
+nplus = (1-x)*n + ustuff*vacancy^eeta;
+
+c(1) = kplus - maxK;
+c(2) = nplus - maxN;
+c(3) = minK - kplus;
+c(4) = minN - nplus;
+
 ceq = 0;
 
 end
@@ -47,23 +55,18 @@ x = param(14); % 14
 
 % Load variables
 a = state(1); k = state(2); n = state(3); tot_stuff = state(4); ustuff = state(5);
-kplus = control(1);
-nplus = control(2);
+c = control(1);
+v = control(2);
+kplus = tot_stuff - c - kkappa*v;
+nplus = (1-x)*n + ustuff*v^eeta;
+
 kplus_cheby = -1 + 2*(kplus-minK)/(maxK-minK);
 nplus_cheby = -1 + 2*(nplus-minN)/(maxN-minN);
 
 % Find current utility
-v = ((nplus - (1-x)*n)/ustuff)^(1/eeta); % v is guaranteed to be positive outside
-c = tot_stuff - kplus - kkappa*v;
-if (c < 0)
-	value = -9e10;
-	gradient = -9e10*ones(2,1);
-	return;
-else
-	util = log(c) - ggamma*n;
-	Du(1) = 1/c*(-1);
-	Du(2) = 1/c*(-kkappa)/eeta*v^(1-eeta);
-end
+util = log(c) - ggamma*n;
+Du(1) = 1/c;
+Du(2) = 0;
 
 % Find expected value
 EV = 0;
