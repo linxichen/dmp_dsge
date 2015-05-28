@@ -9,15 +9,15 @@ tic
 
 %% Accuracy Control
 mypara;
-minA = 0.4; maxA = 1.6;
-minK = 1000; maxK = 2000;
+minA = 0.6; maxA = 1.4;
+minK = 700; maxK = 2000;
 minN = 0.5; maxN = 0.999;
-degree = 3;
-tol = 1e-3;
-damp = 0.2;
-nA = 11;
-nK = 11;
-nN = 11;
+degree = 5;
+tol = 1e-3*(1-bbeta);
+damp = 0.0;
+nA = 9;
+nK = 9;
+nN = 9;
 
 %% Encapsulate all parameters
 param = [... 
@@ -38,9 +38,9 @@ param = [...
  ];
 %% Grid generation
 % Agrid = ChebyshevRoots(degree,'Tn',[minA,maxA]);
-Agrid = ChebyshevRoots(nA,'Tn',[0.7,1.3]);
-Kgrid = ChebyshevRoots(nK,'Tn',[1100,1600]);
-Ngrid = ChebyshevRoots(nN,'Tn',[0.85,0.99]);
+Agrid = ChebyshevRoots(nA,'Tn',[0.8,1.2]);
+Kgrid = ChebyshevRoots(nK,'Tn',[1000,1600]);
+Ngrid = ChebyshevRoots(nN,'Tn',[0.8,0.99]);
 Achebygrid = ChebyshevRoots(nA,'Tn');
 Kchebygrid = ChebyshevRoots(nK,'Tn');
 Nchebygrid = ChebyshevRoots(nN,'Tn');
@@ -63,27 +63,29 @@ end
 
 
 %% Initialize policy function and value functions
-kopt = k_ss*ones(N,1);
-kopt_cheby = -1 + (kopt-minK)/(maxK-minK)*2;
-nopt = n_ss*ones(N,1);
-nopt_cheby = -1 + (nopt-minN)/(maxN-minN)*2;
 pphi = zeros(K,1); % coefficients of value function w.r.t basis
-[n_nodes,epsi_nodes,weight_nodes] = GH_Quadrature(10,1,1);
+[n_nodes,epsi_nodes,weight_nodes] = GH_Quadrature(7,1,1);
 policy = zeros(N,2); exitflag = zeros(N,1); util = zeros(N,1);
-options = optimoptions('fmincon','Algorithm','sqp','AlwaysHonorConstraints','bounds','Display','notify-detailed');
+options = optimoptions('fmincon',...
+                       'Algorithm','interior-point',...
+					   'AlwaysHonorConstraints','bounds',...
+					   'Display','notify-detailed',...
+					   'MaxFunEvals',5000,...
+					   'TolFun',1e-8,...
+					   'MaxIter',5000,...
+					   'DerivativeCheck','off',...
+					   'GradObj','on',...
+					   'TypicalX',[k_ss,n_ss]);
 
+%% Use some guess
+parfor i = 1:N
+    [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);
+	policy(i,:) = [max(minK,(1-ddelta)*Kgrid(i_k)),max(minN,(1-x)*Ngrid(i_n))];
+end
+
+%% Main body of iteration
 value_diff = 10;
 while value_diff > tol
-    %% Given value find policy function
-    parfor i = 1:N
-        [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);
-        a = Agrid(i_a); k  = Kgrid(i_k); n = Ngrid(i_n); %#ok<PFBNS>
-        lb = [minK,(1-x)*n]; ub = [maxK,maxN];
-        state = [a,k,n,tot_stuff(i),ustuff(i)];
-        objfunc = @(x) -rhsvalue(state,x,param,pphi,epsi_nodes,weight_nodes,n_nodes);
-        [policy(i,:),~,exitflag(i)] = fmincon(objfunc,[k,0.95*((1-x)*n)+0.05*(1-(1-x)*n)],[],[],[],[],lb,ub,[],options);
-    end
-    
     %% Given policy find value function
     EP = zeros(N,K);
     parfor i = 1:N
@@ -121,11 +123,24 @@ while value_diff > tol
     X = (P - bbeta*EP);
     pphi_temp = (X'*X)\(X'*util);
     pphi_new = (1-damp)*pphi_temp + damp*pphi; 
-    
+
     %% Find diff
-    value_diff = norm(pphi_new-pphi,inf)
+    value_diff = norm(P*(pphi_new-pphi),inf)
     pphi = pphi_new;
-    
+	
+    %% Given value find policy function
+    parfor i = 1:N
+        [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);
+        a = Agrid(i_a); k  = Kgrid(i_k); n = Ngrid(i_n); %#ok<PFBNS>
+        lb = [minK,(1-x)*n]; ub = [maxK,maxN];
+        state = [a,k,n,tot_stuff(i),ustuff(i)];
+		x0 = [k,n];
+		% mycon = @(x) pos_constraint(state,x,param);
+        [policy(i,:),exitflag(i)] = nested_obj(state,param,pphi,epsi_nodes,weight_nodes,n_nodes,x0,lb,ub,options);
+		str = sprintf('State is %f, %f, %f, %f, %f, policy is %f, %f',[state,policy(i,:)]);
+		disp(str);
+    end
+
 end
 
 %% End game
