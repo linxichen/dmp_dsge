@@ -36,3 +36,7 @@ Dynare/DMP_RBC_PARAS.mat
 *.mat
 
 *.m~
+
+*.txt
+
+PPI/tools/gen_hermite_rule.m

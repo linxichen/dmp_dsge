@@ -9,15 +9,15 @@ tic
 
 %% Accuracy Control
 mypara;
-minA = 0.6; maxA = 1.4;
+minA = 0.3; maxA = 1.7;
 minK = 700; maxK = 2000;
 minN = 0.5; maxN = 0.999;
-degree = 5;
-tol = 1e-3*(1-bbeta);
+degree = 3;
+tol = 1e-7*(1-bbeta);
 damp = 0.0;
-nA = 9;
-nK = 9;
-nN = 9;
+nA = 6;
+nK = 6;
+nN = 6;
 
 %% Encapsulate all parameters
 param = [... 
@@ -64,7 +64,8 @@ end
 
 %% Initialize policy function and value functions
 pphi = zeros(K,1); % coefficients of value function w.r.t basis
-[n_nodes,epsi_nodes,weight_nodes] = GH_Quadrature(7,1,1);
+[epsi_nodes,weight_nodes] = GH_nice(15,0,1);
+n_nodes = length(epsi_nodes);
 policy = zeros(N,2); exitflag = zeros(N,1); util = zeros(N,1);
 options = optimoptions('fmincon',...
                        'Algorithm','interior-point',...
@@ -73,8 +74,8 @@ options = optimoptions('fmincon',...
 					   'MaxFunEvals',5000,...
 					   'TolFun',1e-8,...
 					   'MaxIter',5000,...
-					   'DerivativeCheck','off',...
-					   'GradObj','on',...
+					   'DerivativeCheck','on',...
+					   'GradObj','off',...
 					   'TypicalX',[k_ss,n_ss]);
 
 %% Use some guess
@@ -113,7 +114,7 @@ while value_diff > tol
     %% Find utility and regress
     parfor i = 1:N
         [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);
-        a = Agrid(i_a); k = Kgrid(i_k); n = Ngrid(i_n);
+        n = Ngrid(i_n);
         kplus = policy(i,1);
         nplus = policy(i,2);
         v = ((nplus - (1-x)*n)/ustuff(i))^(1/eeta); % v is guaranteed to be positive outside
@@ -125,7 +126,7 @@ while value_diff > tol
     pphi_new = (1-damp)*pphi_temp + damp*pphi; 
 
     %% Find diff
-    value_diff = norm(P*(pphi_new-pphi),inf)
+    value_diff = norm(P*(pphi_new-pphi),Inf)
     pphi = pphi_new;
 	
     %% Given value find policy function
@@ -134,7 +135,7 @@ while value_diff > tol
         a = Agrid(i_a); k  = Kgrid(i_k); n = Ngrid(i_n); %#ok<PFBNS>
         lb = [minK,(1-x)*n]; ub = [maxK,maxN];
         state = [a,k,n,tot_stuff(i),ustuff(i)];
-		x0 = [k,n];
+		x0 = policy(i,:);
 		% mycon = @(x) pos_constraint(state,x,param);
         [policy(i,:),exitflag(i)] = nested_obj(state,param,pphi,epsi_nodes,weight_nodes,n_nodes,x0,lb,ub,options);
 		str = sprintf('State is %f, %f, %f, %f, %f, policy is %f, %f',[state,policy(i,:)]);

@@ -7,7 +7,7 @@ function val = chebypoly(p,x)
 % Author: Linxi Chen
 
 %% Basic Error Checking
-if (x>1 || x<-1)
+if ((x>1) || (x<-1))
     error('argument is not bounded in [-1,1]');
 end
 
