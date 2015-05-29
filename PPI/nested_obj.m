@@ -1,6 +1,6 @@
-function [x,exitflag] = nested_obj(state,param,pphi,epsi_nodes,weight_nodes,n_nodes,x0,lb,ub,options);
+function [x,fval,exitflag] = nested_obj(state,param,pphi,epsi_nodes,weight_nodes,n_nodes,x0,lb,ub,options);
 % Call fmincon
-[x,exitflag] = fmincon(@obj,x0,[],[],[],[],lb,ub,@pos_constraint,options);
+[x,fval,exitflag] = fmincon(@obj,x0,[],[],[],[],lb,ub,@pos_constraint,options);
 
 function [c,ceq] = pos_constraint(control)
 % This function calculates implied consumption and vacancy value such that they are positive
