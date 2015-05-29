@@ -15,9 +15,9 @@ minN = 0.5; maxN = 0.99;
 degree = 5;
 tol = 1e-7*(1-bbeta);
 damp = 0.0;
-nA = 16;
-nK = 16;
-nN = 16;
+nA = 5;
+nK = 50;
+nN = 50;
 
 %% Encapsulate all parameters
 param = [... 
