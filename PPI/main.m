@@ -138,7 +138,8 @@ while value_diff > tol
         lb = [minK,(1-x)*n]; ub = [maxK,maxN];
         state = [a,k,n,tot_stuff(i),ustuff(i)];
 		x0 = [k,n];
-        [policy(i,:),v_new(i),exitflag(i)] = nested_obj(state,param,pphi,epsi_nodes,weight_nodes,n_nodes,x0,lb,ub,options);
+        [policy(i,:),temp,exitflag(i)] = nested_obj(state,param,pphi,epsi_nodes,weight_nodes,n_nodes,x0,lb,ub,options);
+		v_new(i) = -temp;
 		str = sprintf('State is %f, %f, %f, %f, %f, policy is %f, %f',[state,policy(i,:)]);
 		disp(str);
     end
