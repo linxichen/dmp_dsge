@@ -13,8 +13,8 @@ minA = 0.3; maxA = 1.7;
 minK = 700; maxK = 2000;
 minN = 0.5; maxN = 0.99;
 degree = 5;
-tol = 1e-7*(1-bbeta);
-damp = 0.5;
+tol = 1e-3*(1-bbeta);
+damp = 0.0;
 nA = 16;
 nK = 16;
 nN = 16;
@@ -61,7 +61,7 @@ end
 
 %% Initialize policy function and value functions
 pphi = [log(1800);0;0;0]; % coefficients of value function w.r.t basis
-[epsi_nodes,weight_nodes] = GH_nice(6,0,1);
+[epsi_nodes,weight_nodes] = GH_nice(21,0,1);
 n_nodes = length(epsi_nodes);
 policy = zeros(N,2); exitflag = zeros(N,1); util = zeros(N,1);
 v_new = zeros(N,1);
@@ -69,14 +69,14 @@ v_new = zeros(N,1);
 % Nonlinear regression options
 opts = statset('nlinfit');
 opts.Display = 'final';
-opts.MaxIter = 10000;
+opts.MaxIter = 1000;
 
 options = optimoptions('fmincon',...
-                       'Algorithm','interior-point',...
+                       'Algorithm','sqp',...
 					   'AlwaysHonorConstraints','bounds',...
 					   'Display','notify-detailed',...
 					   'MaxFunEvals',3000,...
-					   'TolFun',1e-8,...
+					   'TolFun',1e-6,...
 					   'MaxIter',3000,...
 					   'DerivativeCheck','off',...
 					   'GradObj','on',...
