@@ -13,11 +13,11 @@ minA = 0.3; maxA = 1.7;
 minK = 700; maxK = 2000;
 minN = 0.5; maxN = 0.99;
 degree = 5;
-tol = 1e-3*(1-bbeta);
+tol = (1-bbeta);
 damp = 0.0;
 nA = 16;
-nK = 16;
-nN = 16;
+nK = 50;
+nN = 50;
 
 %% Encapsulate all parameters
 param = [... 
@@ -40,7 +40,7 @@ param = [...
 %% Grid generation
 % Agrid = ChebyshevRoots(degree,'Tn',[minA,maxA]);
 Agrid = ChebyshevRoots(nA,'Tn',[0.8,1.2]);
-Kgrid = ChebyshevRoots(nK,'Tn',[1000,1600]);
+Kgrid = ChebyshevRoots(nK,'Tn',[800,2000]);
 Ngrid = ChebyshevRoots(nN,'Tn',[0.8,0.99]);
 Achebygrid = ChebyshevRoots(nA,'Tn');
 Kchebygrid = ChebyshevRoots(nK,'Tn');
