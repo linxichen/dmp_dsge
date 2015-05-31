@@ -157,15 +157,15 @@ tic
 save
 
 %% Euler equation error
-nK_ee = 50; nA_ee = 50; nN_ee = 50;
+nK_ee = 10; nA_ee = 10; nN_ee = 10;
 Kee = linspace(0.8*k_ss,1.2*k_ss,nK_ee);
 Aee = linspace(0.8,1.2,nA_ee);
 Nee = linspace(0.7,0.999,nN_ee);
-EEerror_c = 999999*ones(nA_ee*nK_ee*nN_ee);
-EEerror_v = 999999*ones(nA_ee*nK_ee*nN_ee);
+EEerror_c = 999999*ones(nA_ee*nK_ee*nN_ee,1);
+EEerror_v = 999999*ones(nA_ee*nK_ee*nN_ee,1);
 
-parfor index = 1:nA_ee*nK_ee*nN_ee
-    [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);
+for index = 1:nA_ee*nK_ee*nN_ee
+    [i_a,i_k,i_n] = ind2sub([nA,nK,nN],index);
     A = Aee(i_a);
     k = Kee(i_k);
     n = Nee(i_n);
