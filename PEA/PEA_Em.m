@@ -3,15 +3,16 @@ clear all
 close all
 clc
 format long
+addpath('./tools')
 
 %% Set the stage
 mypara;
 
-damp_factor = 0.5;
-T = 10000;
+damp_factor = 0.1;
+T = 3000;
 burnin = ceil(0.1*T);
 maxiter = 10000;
-tol = 1e-5;
+tol = 1e-6;
 ksim = zeros(1,T);
 nsim = ksim;
 Asim = ksim;
@@ -42,6 +43,7 @@ nss = n_ss;
 
 %% Simulate shocks
 rng('default')
+rng(2015);
 eps = normrnd(0,1,1,T);
 for t = 2:T
     Asim(t) = rrho_A*Asim(t-1) + ssigma_A*eps(t);
@@ -55,6 +57,7 @@ opts = statset('nlinfit');
 opts.Display = 'final';
 opts.MaxIter = 10000;
 diff = 10; iter = 0;
+[epsi_nodes,weight_nodes] = GH_nice(21,1,1);
 while (diff>tol && iter <= maxiter)
 % Simulation endo variables
 ksim(1) = kss; nsim(1) = nss;
@@ -76,7 +79,6 @@ for t = 1:T
         nsim(t+1) = (1-x)*nsim(t) + xxi*ttheta^(eeta)*(1-nsim(t));
         
         % Find expected mf and mh
-        [n_nodes,epsi_nodes,weight_nodes] = GH_Quadrature(10,1,1);
         Emf = 0; Emh = 0;
         for i_node = 1:length(weight_nodes)
             Aplus = exp(rrho_A*log(Asim(t)) + ssigma_A*epsi_nodes(i_node));
@@ -103,8 +105,8 @@ coeff_mh_temp = (X'*X)\(X'*ln_mh);
 coeff_mf_temp = (X'*X)\(X'*ln_mf);
 
 %% Damped update
-coeff_mh_new = damp_factor*coeff_mh_temp+(1-damp_factor)*coeff_mh;
-coeff_mf_new = damp_factor*coeff_mf_temp+(1-damp_factor)*coeff_mf;
+coeff_mh_new = (1-damp_factor)*coeff_mh_temp+(damp_factor)*coeff_mh;
+coeff_mf_new = (1-damp_factor)*coeff_mf_temp+(damp_factor)*coeff_mf;
 
 %% Compute norm
 diff = norm([coeff_mh;coeff_mf]-[coeff_mh_new;coeff_mf_new],Inf);
@@ -130,7 +132,9 @@ nk = 50; nA = 50; nnn = 50;
 Kgrid = linspace(0.8*kss,1.2*kss,nk);
 Agrid = linspace(0.8,1.2,nA);
 Ngrid = linspace(0.7,0.999,nnn);
-EEerror = 999999*ones(nA,nk,nnn);
+EEerror_c = 999999*ones(nA,nk,nnn);
+EEerror_v = 999999*ones(nA,nk,nnn);
+
 for i_A = 1:nA
     A = Agrid(i_A);
     for i_k = 1:nk
@@ -150,7 +154,7 @@ for i_A = 1:nA
             nplus = (1-x)*n + xxi*ttheta^(eeta)*(1-n);
             
             % Find expected mf and mh and implied consumption
-            [n_nodes,epsi_nodes,weight_nodes] = GH_Quadrature(10,1,1);
+            [epsi_nodes,weight_nodes] = GH_nice(21,1,1);
             Emf = 0; Emh = 0;
             for i_node = 1:length(weight_nodes)
                 Aplus = exp(rrho_A*log(A) + ssigma_A*epsi_nodes(i_node));
@@ -165,14 +169,20 @@ for i_A = 1:nA
                 Emf = Emf + weight_nodes(i_node)*(( (1-ttau)*((1-aalpha)*yplus/nplus-z-ggamma*cplus) + (1-x)*kkappa/xxi*tthetaplus^(1-eeta) - ttau*kkappa*tthetaplus )/cplus );
             end
             c_imp = (bbeta*Emh)^(-1);
-            EEerror(i_A,i_k,i_n) = abs((c-c_imp)/c_imp);
+            v_imp = (kkappa/c_imp/((bbeta*Emf))/(xxi*(1-n)^(1-eeta)))^(1/(eeta-1));
+            EEerror_c(i_A,i_k,i_n) = abs((c-c_imp)/c_imp);   
+            EEerror_v(i_A,i_k,i_n) = abs((v-v_imp)/v_imp);  
         end
     end
 end
-EEerror_inf = norm(EEerror(:),inf);
-EEerror_mean = mean(EEerror(:));
+EEerror_c_inf = norm(EEerror_c(:),inf);
+EEerror_v_inf = norm(EEerror_v(:),inf);
+
+EEerror_c_mean = mean(EEerror_c(:));
+EEerror_v_mean = mean(EEerror_v(:));
+
 figure
-plot(Kgrid,EEerror(ceil(nA/2),:,ceil(nnn/2)))
+plot(Kgrid,EEerror_c(ceil(nA/2),:,ceil(nnn/2)))
 
 %% Implied policy functions and find wages
 Agrid = csvread('../CUDA_VFI/results/Agrid.csv');

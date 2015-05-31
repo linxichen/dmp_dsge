@@ -177,7 +177,8 @@ for index = 1:nA_ee*nK_ee*nN_ee
     [temp_policy,~,~] = nested_obj(state,param,pphi,epsi_nodes,weight_nodes,n_nodes,x0,lb,ub,options);
     kplus = temp_policy(1); nplus = temp_policy(2);
     v = ((nplus - (1-x)*n)/state(5))^(1/eeta);
-    cc(index) = state(4) - kplus - kkappa*v;
+    c = state(4) - kplus - kkappa*v;
+    cc(index) = c;
     
     % Find expected mf and mh and implied consumption
     Emf = 0; Emh = 0;
@@ -197,7 +198,7 @@ for index = 1:nA_ee*nK_ee*nN_ee
         Emf = Emf + weight_nodes(i_node)*(( (1-ttau)*((1-aalpha)*yplus/nplus-z-ggamma*cplus) + (1-x)*kkappa/xxi*tthetaplus^(1-eeta) - ttau*kkappa*tthetaplus )/cplus );
     end
     c_imp = (bbeta*Emh)^(-1);
-    v_imp = (kkappa/c_imp/((bbeta*Emf)^(-1))/state(5))^(1/(eeta-a));
+    v_imp = (kkappa/c_imp/(bbeta*Emf)/state(5))^(1/(eeta-1));
     EEerror_c(index) = abs((c-c_imp)/c_imp);
     EEerror_v(index) = abs((v-v_imp)/v_imp);
 end
