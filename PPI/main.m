@@ -60,7 +60,7 @@ end
 
 
 %% Initialize policy function and value functions
-pphi = [log(1800);0;0;0]; % coefficients of value function w.r.t basis
+pphi = [7.255147667181310;0.010568982383841;0.036625376586577;-0.002025003070139]; % coefficients of value function w.r.t basis
 [epsi_nodes,weight_nodes] = GH_nice(21,0,1);
 n_nodes = length(epsi_nodes);
 policy = zeros(N,2); exitflag = zeros(N,1); util = zeros(N,1);
@@ -155,3 +155,51 @@ end
 %% End game
 tic
 save
+
+%% Euler equation error
+nK_ee = 50; nA_ee = 50; nN_ee = 50;
+Kee = linspace(0.8*k_ss,1.2*k_ss,nK_ee);
+Aee = linspace(0.8,1.2,nA_ee);
+Nee = linspace(0.7,0.999,nN_ee);
+EEerror_c = 999999*ones(nA_ee*nK_ee*nN_ee);
+EEerror_v = 999999*ones(nA_ee*nK_ee*nN_ee);
+
+parfor index = 1:nA_ee*nK_ee*nN_ee
+    [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);
+    A = Aee(i_a);
+    k = Kee(i_k);
+    n = Nee(i_n);
+    state = [A,k,n,A*k^aalpha*n^(1-aalpha) + (1-ddelta)*k + z*(1-n),xxi*(1-n)^(1-eeta)];
+    
+    x0 = [k,n];
+    lb = [500,(1-x)*n]; ub = [3000,0.999];
+    [temp_policy,~,~] = nested_obj(state,param,pphi,epsi_nodes,weight_nodes,n_nodes,x0,lb,ub,options);
+    kplus = temp_policy(1); nplus = temp_policy(2);
+    v = ((nplus - (1-x)*n)/state(5))^(1/eeta);
+    c = state(4) - kplus - kkappa*v;
+    
+    % Find expected mf and mh and implied consumption
+    Emf = 0; Emh = 0;
+    for i_node = 1:length(weight_nodes)
+        Aplus = exp(rrho_A*log(A) + ssigma_A*epsi_nodes(i_node));
+        stateplus = [Aplus,kplus,nplus,Aplus*kplus^aalpha*nplus^(1-aalpha) + (1-ddelta)*kplus + z*(1-nplus),xxi*(1-nplus)^(1-eeta)];
+
+        x0 = [kplus,nplus];
+        lb = [500,(1-x)*nplus]; ub = [3000,0.999];
+        [temp_policy,~,~] = nested_obj(stateplus,param,pphi,epsi_nodes,weight_nodes,n_nodes,x0,lb,ub,options);
+        kplusplus = temp_policy(1); nplusplus = temp_policy(2);
+        vplus = ((nplusplus - (1-x)*n)/state(5))^(1/eeta);
+        cplus = state(4) - kplusplus - kkappa*vplus;
+        tthetaplus = vplus/(1-nplus); yplus = Aplus*kplus^aalpha*nplus^(1-aalpha);
+        
+        Emh = Emh + weight_nodes(i_node)*((1-ddelta+aalpha*yplus/kplus)/cplus);
+        Emf = Emf + weight_nodes(i_node)*(( (1-ttau)*((1-aalpha)*yplus/nplus-z-ggamma*cplus) + (1-x)*kkappa/xxi*tthetaplus^(1-eeta) - ttau*kkappa*tthetaplus )/cplus );
+    end
+    c_imp = (bbeta*Emh)^(-1);
+    v_imp = (kkappa/c_imp/((bbeta*Emf)^(-1))/state(5))^(1/(eeta-a));
+    EEerror_c(index) = abs((c-c_imp)/c_imp);
+    EEerror_v(index) = abs((v-v_imp)/v_imp);
+end
+
+EEerror_c_inf = norm(EEerror_c(:),inf)
+EEerror_v_inf = norm(EEerror_v(:),inf)
