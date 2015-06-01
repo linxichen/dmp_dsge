@@ -2,7 +2,7 @@
 clc;
 clear;
 close all;
-addpath(genpath('tools'));
+addpath(genpath('../tools'));
 addpath(genpath('../PEA'))
 tic
 

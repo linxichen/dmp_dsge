@@ -33,11 +33,9 @@ coeff_mf_old = coeff_mf;
 regeqn_mh = @(b,x) exp(b(1)*x(:,1)+b(2).*log(x(:,2))+b(3).*log(x(:,3))+b(4).*log(x(:,4))); % Model
 regeqn_mf = @(b,x) exp(b(1)*x(:,1)+b(2).*log(x(:,2))+b(3).*log(x(:,3))+b(4).*log(x(:,4))); % Model
 
-
 %% Solve for SS
 kss = k_ss;
 nss = n_ss;
-
 
 %% Simulate shocks
 rng('default')
