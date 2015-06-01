@@ -146,7 +146,7 @@ while value_diff > tol
     pphi_new = (1-damp)*pphi_temp + damp*pphi; 
 
     %% Find diff
-    value_diff = norm((pphi_new-pphi),Inf)
+    value_diff = norm((pphi_new-pphi),Inf);
     pphi = pphi_new;
 	
 

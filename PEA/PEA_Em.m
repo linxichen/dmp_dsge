@@ -1,5 +1,5 @@
 %% Housekeeping
-clear all
+clear
 close all
 clc
 format long
@@ -57,7 +57,7 @@ opts = statset('nlinfit');
 opts.Display = 'final';
 opts.MaxIter = 10000;
 diff = 10; iter = 0;
-[epsi_nodes,weight_nodes] = GH_nice(21,1,1);
+[epsi_nodes,weight_nodes] = GH_nice(21,0,1);
 while (diff>tol && iter <= maxiter)
 % Simulation endo variables
 ksim(1) = kss; nsim(1) = nss;
@@ -154,7 +154,6 @@ for i_A = 1:nA
             nplus = (1-x)*n + xxi*ttheta^(eeta)*(1-n);
             
             % Find expected mf and mh and implied consumption
-            [epsi_nodes,weight_nodes] = GH_nice(21,1,1);
             Emf = 0; Emh = 0;
             for i_node = 1:length(weight_nodes)
                 Aplus = exp(rrho_A*log(A) + ssigma_A*epsi_nodes(i_node));
@@ -169,7 +168,8 @@ for i_A = 1:nA
                 Emf = Emf + weight_nodes(i_node)*(( (1-ttau)*((1-aalpha)*yplus/nplus-z-ggamma*cplus) + (1-x)*kkappa/xxi*tthetaplus^(1-eeta) - ttau*kkappa*tthetaplus )/cplus );
             end
             c_imp = (bbeta*Emh)^(-1);
-            v_imp = (kkappa/c_imp/((bbeta*Emf))/(xxi*(1-n)^(1-eeta)))^(1/(eeta-1));
+            q_imp = kkappa/(c_imp*bbeta*Emf);
+            v_imp = (q_imp/(xxi*(1-n)^(1-eeta)))^(1/(eeta-1));
             EEerror_c(i_A,i_k,i_n) = abs((c-c_imp)/c_imp);   
             EEerror_v(i_A,i_k,i_n) = abs((v-v_imp)/v_imp);  
         end
@@ -288,8 +288,8 @@ Aindex = ceil(nA/2);
 figure
 [Kmesh,Nmesh] = meshgrid(Kgrid,Ngrid);
 DK = squeeze(kk(Aindex,:,:))-Kmesh';
-DN = squeeze(nn(Aindex,:,:))-Nmesh'
-quiver(Kmesh',Nmesh',DK,DN,2)
+DN = squeeze(nn(Aindex,:,:))-Nmesh';
+quiver(Kmesh',Nmesh',DK,DN,2);
 axis tight
 
 %% Paths 1
