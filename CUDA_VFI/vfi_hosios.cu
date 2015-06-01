@@ -1,6 +1,6 @@
 #define nA 11
-#define nk 501
-#define nn 501
+#define nk 1501
+#define nn 1501
 #define tol 1e-5
 #define maxiter 10000
 #define maxouteriter 1
