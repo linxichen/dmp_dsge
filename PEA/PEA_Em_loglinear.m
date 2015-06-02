@@ -7,89 +7,47 @@ addpath('../tools')
 
 %% Set the stage
 mypara;
-min_lnA = log(0.5); max_lnA = log(1.5);
-min_lnK = log(900); max_lnK = log(1900);
-min_lnN = log(0.5); max_lnN = log(0.9999);
-degree = 7;
-nA = 9;
-nK = 9;
-nN = 9;
-damp_factor = 0.7;
+
+damp_factor = 0.1;
+T = 10000;
+burnin = ceil(0.1*T);
 maxiter = 10000;
 tol = 1e-6;
-options = optimoptions(@fsolve,'Display','final-detailed','Jacobian','off');
-[epsi_nodes,weight_nodes] = GH_nice(5,0,1);
-n_nodes = length(epsi_nodes);
+ksim = zeros(1,T);
+nsim = ksim;
+Asim = ksim;
+mhsim = ksim;
+mfsim = ksim;
+Emfsim = ksim;
+Emhsim = ksim;
 
-%% Grid creaton
-lnAgrid = ChebyshevRoots(nA,'Tn',[log(0.85),log(1.15)]);
-lnKgrid = ChebyshevRoots(nK,'Tn',[log(1200),log(1500)]);
-lnNgrid = ChebyshevRoots(nN,'Tn',[log(0.8),log(0.98)]);
-lnAchebygrid = ChebyshevRoots(nA,'Tn');
-lnKchebygrid = ChebyshevRoots(nK,'Tn');
-lnNchebygrid = ChebyshevRoots(nN,'Tn');
-N = nA*nK*nN;
-
-[fakebasis,order_table] = ChebyshevND(degree,[0,0,0]);
-K = size(fakebasis,2);
-
-%% Encapsulate all parameters
-param = [... 
- bbeta; % 1
- ggamma; % 2
- kkappa; % 3
- eeta; % 4
- rrho; %5
- ssigma; %6
- min_lnA;  %7
- max_lnA; %8
- min_lnK; %9
- max_lnK; %10
- min_lnN; % 11
- max_lnN; % 12
- degree; % 13
- x; % 14
- aalpha; % 15
- ddelta; % 16
- xxi; % 17
- ttau; % 18
- z
- ];
-
-%% Precomputation
-X = zeros(N,K);
-tot_stuff = zeros(N,1); ustuff = zeros(N,1);
-parfor i = 1:N
-    [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);
-    a = exp(lnAgrid(i_a)); k  = exp(lnKgrid(i_k)); n = exp(lnNgrid(i_n)); %#ok<PFBNS>
-    tot_stuff(i) = a*k^aalpha*n^(1-aalpha) + (1-ddelta)*k + z*(1-n);
-    ustuff(i) = xxi*(1-n)^(1-eeta);
-    X(i,:) = ChebyshevND(degree,[lnAchebygrid(i_a),lnKchebygrid(i_k),lnNchebygrid(i_n)])
-end
-
-%% Create a initial guess from a rough PEA solution
 if (exist('PEA_Em.mat','file')==2)
     load('PEA_Em.mat','coeff_mh','coeff_mf')
 else
     coeff_mh = [2.197278872016918; -0.030892629079668; -0.581445054648990; -0.004225383144729]; % one constant, each for state variable
     coeff_mf = [2.281980399764238; 1.729203578753512; -0.315489670998162; -0.115805845378316];
 end
-lnEmh_train = zeros(N,1); lnEmf_train = zeros(N,1);
-parfor i = 1:N
-    [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);
-    lnEmh_train(i) = ([1 lnAgrid(i_a) lnKgrid(i_k) lnNgrid(i_n)]*coeff_mh);
-    lnEmf_train(i) = ([1 lnAgrid(i_a) lnKgrid(i_k) lnNgrid(i_n)]*coeff_mf)
-end
-coeff_lnmh = (X'*X)\(X'*(lnEmh_train));
-coeff_lnmf = (X'*X)\(X'*(lnEmf_train));
-coeff_lnmh_old = coeff_lnmh;
-coeff_lnmf_old = coeff_lnmf;
 
-lnEM_new = zeros(N,2);
+coeff_mh_old = coeff_mh;
+coeff_mf_old = coeff_mf;
+regeqn_mh = @(b,x) exp(b(1)*x(:,1)+b(2).*log(x(:,2))+b(3).*log(x(:,3))+b(4).*log(x(:,4))); % Model
+regeqn_mf = @(b,x) exp(b(1)*x(:,1)+b(2).*log(x(:,2))+b(3).*log(x(:,3))+b(4).*log(x(:,4))); % Model
+
 
 %% Solve for SS
 kss = k_ss;
 nss = n_ss;
+
+
+%% Simulate shocks
+rng('default')
+rng(2015);
+eps = normrnd(0,1,1,T);
+for t = 2:T
+    Asim(t) = rrho_A*Asim(t-1) + ssigma_A*eps(t);
+end
+Abar = 1;
+Asim = Abar*exp(Asim);
 
 %% Iteration
 opts = statset('nlinfit');
@@ -97,52 +55,90 @@ opts = statset('nlinfit');
 opts.Display = 'final';
 opts.MaxIter = 10000;
 diff = 10; iter = 0;
+[epsi_nodes,weight_nodes] = GH_nice(21,0,1);
 while (diff>tol && iter <= maxiter)
-    %% Time iter step, find EMF EMH that solve euler exactly
-    for i = 1:N
-        [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i)
-        state = [lnAgrid(i_a),lnKgrid(i_k),lnNgrid(i_n),tot_stuff(i),ustuff(i)]
-        lnEMH_guess = ChebyshevND(degree,[lnAchebygrid(i_a),lnKchebygrid(i_k),lnNchebygrid(i_n)])*coeff_lnmh;
-        lnEMF_guess = ChebyshevND(degree,[lnAchebygrid(i_a),lnKchebygrid(i_k),lnNchebygrid(i_n)])*coeff_lnmf;
-        x0 = [lnEMH_guess,lnEMF_guess];
-        [lnEM_new(i,:),fval,exitflag] = nested_timeiter_obj(state,param,coeff_lnmh,coeff_lnmf,epsi_nodes,weight_nodes,n_nodes,x0,options);
+% Simulation endo variables
+ksim(1) = kss; nsim(1) = nss;
+for t = 1:T
+    state(1) = Asim(t);
+    state(2) = ksim(t);
+    state(3) = nsim(t);
+    EM = exp([1 log(state)]*[coeff_mh coeff_mf]);
+    
+    y = Asim(t)*(ksim(t))^(aalpha)*(nsim(t))^(1-aalpha);
+    c = (bbeta*EM(1))^(-1);
+    ttheta = (kkappa/(c*xxi*bbeta*EM(2)))^(1/(eeta-1));
+    v = ttheta*(1-nsim(t));
+    mhsim(t) = (1-ddelta+aalpha*y/ksim(t))/c;
+    mfsim(t) = ( (1-ttau)*((1-aalpha)*y/nsim(t)-z-ggamma*c) + (1-x)*kkappa/xxi*ttheta^(1-eeta) - ttau*kkappa*ttheta )/c;
+    
+    if (t<T)
+        ksim(t+1) = y - c +(1-ddelta)*ksim(t) - kkappa*v + z*(1-nsim(t));
+        nsim(t+1) = (1-x)*nsim(t) + xxi*ttheta^(eeta)*(1-nsim(t));
+        
+        % Find expected mf and mh
+        Emf = 0; Emh = 0;
+        for i_node = 1:length(weight_nodes)
+            Aplus = exp(rrho_A*log(Asim(t)) + ssigma_A*epsi_nodes(i_node));
+            state(1) = Aplus;
+            state(2) = ksim(t+1);
+            state(3) = nsim(t+1);
+            EM = exp([1 log(state)]*[coeff_mh coeff_mf]);
+            yplus = Aplus*(ksim(t+1))^(aalpha)*(nsim(t+1))^(1-aalpha);
+            cplus = (bbeta*EM(1))^(-1);
+            tthetaplus = (kkappa/(cplus*xxi*bbeta*EM(2)))^(1/(eeta-1));
+            Emh = Emh + weight_nodes(i_node)*((1-ddelta+aalpha*yplus/ksim(t+1))/cplus);
+            Emf = Emf + weight_nodes(i_node)*(( (1-ttau)*((1-aalpha)*yplus/nsim(t+1)-z-ggamma*cplus) + (1-x)*kkappa/xxi*tthetaplus^(1-eeta) - ttau*kkappa*tthetaplus )/cplus );
+        end
+        Emfsim(t) = Emf;
+        Emhsim(t) = Emh;
     end
-    coeff = (X'*X)\(X'*lnEM_new);
-    coeff_lnmh_temp = coeff(:,1); coeff_lnmf_temp = coeff(:,2);
-    
-    %% Damped update
-    coeff_lnmh_new = (1-damp_factor)*coeff_lnmh_temp+(damp_factor)*coeff_lnmh;
-    coeff_lnmf_new = (1-damp_factor)*coeff_lnmf_temp+(damp_factor)*coeff_lnmf;
-    
-    %% Compute norm
-    diff = norm([coeff_lnmh;coeff_lnmf]-[coeff_lnmh_new;coeff_lnmf_new],Inf);
-    
-    %% Update
-    coeff_lnmh = coeff_lnmh_new;
-    coeff_lnmf = coeff_lnmf_new;
-    iter = iter+1;
-    %% Display something
-    iter
-    diff
-    coeff_lnmh;
-    coeff_lnmf;
+end
+
+%% Get temp coeff
+ln_mh = log(Emhsim(burnin+1:end-1)');
+ln_mf = log(Emfsim(burnin+1:end-1)');
+X = [ones(T-burnin-1,1) log(Asim(burnin+1:end-1)') log(ksim(burnin+1:end-1)') log(nsim(burnin+1:end-1)')];
+coeff_mh_temp = (X'*X)\(X'*ln_mh);
+coeff_mf_temp = (X'*X)\(X'*ln_mf);
+
+%% Damped update
+coeff_mh_new = (1-damp_factor)*coeff_mh_temp+(damp_factor)*coeff_mh;
+coeff_mf_new = (1-damp_factor)*coeff_mf_temp+(damp_factor)*coeff_mf;
+
+%% Compute norm
+diff = norm([coeff_mh;coeff_mf]-[coeff_mh_new;coeff_mf_new],Inf);
+
+%% Update
+coeff_mh = coeff_mh_new;
+coeff_mf = coeff_mf_new;
+iter = iter+1;
+%% Display something
+iter
+diff
+coeff_mh
+coeff_mf
 
 end;
 
+%% Check Regression Accuracy
+md_mh = fitlm(X(:,2:end),ln_mh,'linear','RobustOpts','on')
+md_mf = fitlm(X(:,2:end),ln_mf,'linear','RobustOpts','on')
+
 %% Euler equation error
 nk = 50; nA = 50; nnn = 50;
-lnKgrid = linspace(0.8*kss,1.2*kss,nk);
-lnAgrid = linspace(0.8,1.2,nA);
-lnNgrid = linspace(0.7,0.999,nnn);
+Kgrid = linspace(0.8*kss,1.2*kss,nk);
+Agrid = linspace(0.8,1.2,nA);
+Ngrid = linspace(0.7,0.999,nnn);
 EEerror_c = 999999*ones(nA,nk,nnn);
 EEerror_v = 999999*ones(nA,nk,nnn);
 
 for i_A = 1:nA
-    A = lnAgrid(i_A);
+    A = Agrid(i_A);
     for i_k = 1:nk
-        k = lnKgrid(i_k);
+        k = Kgrid(i_k);
         for i_n = 1:nnn
-            n = lnNgrid(i_n);
+            n = Ngrid(i_n);
             state(1) = A;
             state(2) = k;
             state(3) = n;
@@ -184,15 +180,15 @@ EEerror_c_mean = mean(EEerror_c(:));
 EEerror_v_mean = mean(EEerror_v(:));
 
 figure
-plot(lnKgrid,EEerror_c(ceil(nA/2),:,ceil(nnn/2)))
+plot(Kgrid,EEerror_c(ceil(nA/2),:,ceil(nnn/2)))
 
 %% Implied policy functions and find wages
-lnAgrid = csvread('../CUDA_VFI/results/Agrid.csv');
-lnKgrid = csvread('../CUDA_VFI/results/Kgrid.csv');
-lnNgrid = csvread('../CUDA_VFI/results/Ngrid.csv');
-nA = length(lnAgrid);
-nk = length(lnKgrid);
-nnn = length(lnNgrid);
+Agrid = csvread('../CUDA_VFI/results/Agrid.csv');
+Kgrid = csvread('../CUDA_VFI/results/Kgrid.csv');
+Ngrid = csvread('../CUDA_VFI/results/Ngrid.csv');
+nA = length(Agrid);
+nk = length(Kgrid);
+nnn = length(Ngrid);
 
 kk = zeros(nA,nk,nnn);
 cc = kk;
@@ -209,9 +205,9 @@ mmummu = kk;
 for i_k = 1:nk
     for i_n = 1:nnn
         for i_A = 1:nA
-            state(1) = lnAgrid(i_A); A = state(1);
-            state(2) = lnKgrid(i_k); k = state(2);
-            state(3) = lnNgrid(i_n); n = state(3);
+            state(1) = Agrid(i_A); A = state(1);
+            state(2) = Kgrid(i_k); k = state(2);
+            state(3) = Ngrid(i_n); n = state(3);
             EM = exp([1 log(state)]*[coeff_mh coeff_mf]);
             
             y = A*(k)^(aalpha)*(n)^(1-aalpha);
@@ -227,9 +223,9 @@ for i_k = 1:nk
             cc(i_A,i_k,i_n) = c;
             vv(i_A,i_k,i_n) = v;
             
-            cc_dynare(i_A,i_k,i_n) = exp(2.111091 + 0.042424/rrho*log(lnAgrid(i_A))/ssigma + 0.615500*(log(lnKgrid(i_k))-log(k_ss)) + 0.014023*(log(lnNgrid(i_n))-log(n_ss)) );
-            kk_dynare(i_A,i_k,i_n) = exp(7.206845 + 0.006928/rrho*log(lnAgrid(i_A))/ssigma + 0.997216*(log(lnKgrid(i_k))-log(k_ss)) + 0.005742*(log(lnNgrid(i_n))-log(n_ss)) );
-            nn_dynare(i_A,i_k,i_n) = exp(-0.056639 + 0.011057/rrho*log(lnAgrid(i_A))/ssigma + 0.001409*(log(lnKgrid(i_k))-log(k_ss)) + 0.850397*(log(lnNgrid(i_n))-log(n_ss)) );
+            cc_dynare(i_A,i_k,i_n) = exp(2.111091 + 0.042424/rrho*log(Agrid(i_A))/ssigma + 0.615500*(log(Kgrid(i_k))-log(k_ss)) + 0.014023*(log(Ngrid(i_n))-log(n_ss)) );
+            kk_dynare(i_A,i_k,i_n) = exp(7.206845 + 0.006928/rrho*log(Agrid(i_A))/ssigma + 0.997216*(log(Kgrid(i_k))-log(k_ss)) + 0.005742*(log(Ngrid(i_n))-log(n_ss)) );
+            nn_dynare(i_A,i_k,i_n) = exp(-0.056639 + 0.011057/rrho*log(Agrid(i_A))/ssigma + 0.001409*(log(Kgrid(i_k))-log(k_ss)) + 0.850397*(log(Ngrid(i_n))-log(n_ss)) );
             
             % Export prices
             wage_export(i_A,i_k,i_n) = w;
@@ -244,35 +240,35 @@ i_mid_n = ceil(nnn/2);
 i_mid_A = ceil(nA/2);
 linewitdh=1.5;
 figure
-plot(lnKgrid,squeeze(kk(i_mid_A,:,i_mid_n)),lnKgrid,squeeze(kk_dynare(i_mid_A,:,i_mid_n)),'LineWidth',linewitdh)
+plot(Kgrid,squeeze(kk(i_mid_A,:,i_mid_n)),Kgrid,squeeze(kk_dynare(i_mid_A,:,i_mid_n)),'LineWidth',linewitdh)
 axis('tight')
 xlabel('k(t)')
 ylabel('k(t+1)')
 legend('Nonlinear','Linear')
 
 figure
-plot(lnKgrid,squeeze(nn(i_mid_A,:,i_mid_n)),lnKgrid,squeeze(nn_dynare(i_mid_A,:,i_mid_n)),'LineWidth',linewitdh)
+plot(Kgrid,squeeze(nn(i_mid_A,:,i_mid_n)),Kgrid,squeeze(nn_dynare(i_mid_A,:,i_mid_n)),'LineWidth',linewitdh)
 axis('tight')
 xlabel('k(t)')
 ylabel('n(t+1)')
 legend('Nonlinear','Linear')
 
 figure
-plot(lnKgrid,squeeze(cc(i_mid_A,:,i_mid_n)),lnKgrid,squeeze(cc_dynare(i_mid_A,:,i_mid_n)),'LineWidth',linewitdh)
+plot(Kgrid,squeeze(cc(i_mid_A,:,i_mid_n)),Kgrid,squeeze(cc_dynare(i_mid_A,:,i_mid_n)),'LineWidth',linewitdh)
 axis('tight')
 xlabel('k(t)')
 ylabel('c(t)')
 legend('Nonlinear','Linear')
 
 figure
-plot(lnKgrid,squeeze(wage_export(i_mid_A,:,i_mid_n)),'LineWidth',linewitdh)
+plot(Kgrid,squeeze(wage_export(i_mid_A,:,i_mid_n)),'LineWidth',linewitdh)
 axis('tight')
 xlabel('k(t)')
 ylabel('wage')
 legend('Nonlinear')
 
 figure
-plot(lnKgrid,squeeze(ttheta_export(i_mid_A,:,i_mid_n)),'LineWidth',linewitdh)
+plot(Kgrid,squeeze(ttheta_export(i_mid_A,:,i_mid_n)),'LineWidth',linewitdh)
 axis('tight')
 xlabel('k(t)')
 ylabel('Tightness')
@@ -288,7 +284,7 @@ legend('Nonlinear')
 %% Dynamics
 Aindex = ceil(nA/2);
 figure
-[Kmesh,Nmesh] = meshgrid(lnKgrid,lnNgrid);
+[Kmesh,Nmesh] = meshgrid(Kgrid,Ngrid);
 DK = squeeze(kk(Aindex,:,:))-Kmesh';
 DN = squeeze(nn(Aindex,:,:))-Nmesh';
 quiver(Kmesh',Nmesh',DK,DN,2);
