@@ -7,10 +7,10 @@ addpath('../tools')
 
 %% Set the stage
 mypara;
-min_lnA = log(0.5); max_lnA = log(1.5);
-min_lnK = log(900); max_lnK = log(1900);
-min_lnN = log(0.5); max_lnN = log(0.9999);
-degree = 7;
+min_lnA = log(0.5); max_lnA = log(2);
+min_lnK = log(900); max_lnK = log(30000);
+min_lnN = log(0.1); max_lnN = log(0.9999);
+degree = 3;
 nA = 9;
 nK = 9;
 nN = 9;
@@ -18,8 +18,10 @@ damp_factor = 0.9;
 maxiter = 10000;
 tol = 1e-6;
 options = optimoptions(@fsolve,'Display','final-detailed','Jacobian','off');
-[epsi_nodes,weight_nodes] = GH_nice(5,0,1);
-n_nodes = length(epsi_nodes);
+T = 3000;
+burnin = ceil(0.1*T);
+[epsi_nodes,weight_nodes] = GH_nice(7,0,1);
+n_nodes = length(weight_nodes);
 
 %% Grid creaton
 lnAgrid = ChebyshevRoots(nA,'Tn',[log(0.85),log(1.15)]);
@@ -56,93 +58,98 @@ param = [...
  z
  ];
 
-%% Precomputation
-X = zeros(N,K);
-tot_stuff = zeros(N,1); ustuff = zeros(N,1);
-parfor i = 1:N
-    [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);
-    a = exp(lnAgrid(i_a)); k  = exp(lnKgrid(i_k)); n = exp(lnNgrid(i_n)); %#ok<PFBNS>
-    tot_stuff(i) = a*k^aalpha*n^(1-aalpha) + (1-ddelta)*k + z*(1-n);
-    ustuff(i) = xxi*(1-n)^(1-eeta);
-    X(i,:) = ChebyshevND(degree,[lnAchebygrid(i_a),lnKchebygrid(i_k),lnNchebygrid(i_n)])
-end
-
 %% Create a initial guess from a rough PEA solution
-if (exist('PEA_Em.mat','file')==2)
-    load('PEA_Em.mat','coeff_mh','coeff_mf')
-else
-    coeff_mh = [2.197278872016918; -0.030892629079668; -0.581445054648990; -0.004225383144729]; % one constant, each for state variable
-    coeff_mf = [2.281980399764238; 1.729203578753512; -0.315489670998162; -0.115805845378316];
-end
-lnEmh_train = zeros(N,1); lnEmf_train = zeros(N,1);
-parfor i = 1:N
-    [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);
-    lnEmh_train(i) = ([1 lnAgrid(i_a) lnKgrid(i_k) lnNgrid(i_n)]*coeff_mh);
-    lnEmf_train(i) = ([1 lnAgrid(i_a) lnKgrid(i_k) lnNgrid(i_n)]*coeff_mf)
-end
-coeff_lnmh = (X'*X)\(X'*(lnEmh_train));
-coeff_lnmf = (X'*X)\(X'*(lnEmf_train));
+coeff_lnmh = zeros(K,1); coeff_lnmh(1:4) = [2.197278872016918;-0.004225383144729;-0.581445054648990;-0.030892629079668];
+coeff_lnmf = zeros(K,1); coeff_lnmf(1:4) = [2.281980399764238;-0.115805845378316;-0.315489670998162;1.729203578753512];
 coeff_lnmh_old = coeff_lnmh;
 coeff_lnmf_old = coeff_lnmf;
 
-lnEM_new = zeros(N,2);
 
 %% Solve for SS
 kss = k_ss;
 nss = n_ss;
 
+%% Prepare simulation grids
+rng('default');
+rng(2015);
+lnAsim = zeros(1,T); lnAchebysim = zeros(1,T);
+lnKsim = zeros(1,T); lnKchebysim = zeros(1,T);
+lnNsim = zeros(1,T); lnNchebysim = zeros(1,T);
+lnKsim(1) = log(k_ss); lnNsim(1) = log(n_ss); lnAsim(1) = log(1);
+lnAchebysim(1) = -1 + 2*(lnAsim(1)-min_lnA)/(max_lnA-min_lnA);
+lnKchebysim(1) = -1 + 2*(lnKsim(1)-min_lnK)/(max_lnK-min_lnK);
+lnNchebysim(1) = -1 + 2*(lnNsim(1)-min_lnN)/(max_lnN-min_lnN);
+eps = normrnd(0,1,1,T);
+for t = 2:T
+    lnAsim(t) = rrho*lnAsim(t-1) + ssigma*eps(t);
+    lnAchebysim(t) = -1 + 2*(lnAsim(t)-min_lnA)/(max_lnA-min_lnA);
+end
+csim = zeros(1,T); qsim = zeros(1,T); tthetasim = zeros(1,T); vsim = zeros(1,T);
+X = zeros(T,K); lnEM_new = zeros(T,2);
+
+
 %% Iteration
-opts = statset('nlinfit');
-%opts.RobustWgtFun = 'bisquare';
-opts.Display = 'final';
-opts.MaxIter = 10000;
 diff = 10; iter = 0;
 while (diff>tol && iter <= maxiter)
+    %% Simulation step
+    for t = 1:T
+        a = exp(lnAsim(t)); k  = exp(lnKsim(t)); n = exp(lnNsim(t));
+        tot_stuff = a*k^aalpha*n^(1-aalpha) + (1-ddelta)*k + z*(1-n);
+        ustuff = xxi*(1-n)^(1-eeta);
+        lnEMH = ChebyshevND(degree,[lnAchebysim(t),lnKchebysim(t),lnNchebysim(t)])*coeff_lnmh;
+        lnEMF = ChebyshevND(degree,[lnAchebysim(t),lnKchebysim(t),lnNchebysim(t)])*coeff_lnmf;
+        csim(t) = 1/(bbeta*exp(lnEMH));
+        qsim(t) = kkappa/csim(t)/(bbeta*exp(lnEMF));
+        tthetasim(t) = (qsim(t)/xxi)^(1/(eeta-1));
+        vsim(t) = tthetasim(t)*(1-n);
+        if t < T
+            lnKsim(t+1) = log(tot_stuff - csim(t) - kkappa*vsim(t));
+            lnNsim(t+1) = log( (1-x)*n + qsim(t)*vsim(t) );
+            lnKchebysim(t+1) = -1 + 2*(lnKsim(t+1)-min_lnK)/(max_lnK-min_lnK);
+            lnNchebysim(t+1) = -1 + 2*(lnNsim(t+1)-min_lnN)/(max_lnN-min_lnN);
+        end
+    end
+    
     %% Time iter step, find EMF EMH that solve euler exactly
-    for i = 1:N
-        [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);
-        state = [lnAgrid(i_a),lnKgrid(i_k),lnNgrid(i_n),tot_stuff(i),ustuff(i)];
-        lnEMH = ChebyshevND(degree,[lnAchebygrid(i_a),lnKchebygrid(i_k),lnNchebygrid(i_n)])*coeff_lnmh;
-        lnEMF = ChebyshevND(degree,[lnAchebygrid(i_a),lnKchebygrid(i_k),lnNchebygrid(i_n)])*coeff_lnmf;
-        c = 1/(bbeta*exp(lnEMH));
-        q = kkappa/c/(bbeta*exp(lnEMF));
-        v = (q/ustuff(i))^(1/(eeta-1));
-        kplus = tot_stuff(i) - c - kkappa*v;
-        nplus = (1-x)*exp(lnNgrid(i_n)) + q*v;
-        lnkplus = log(kplus); lnnplus = log(nplus);
-        lnkplus_cheby = -1 + 2*(lnkplus-min_lnK)/(max_lnK-min_lnK);
-        lnnplus_cheby = -1 + 2*(lnnplus-min_lnN)/(max_lnN-min_lnN);
-        if (lnkplus_cheby < -1 || lnkplus_cheby > 1)
-            lnkplus
-            error('kplus out of bound')
-        end
-        if (lnnplus_cheby < -1 || lnnplus_cheby > 1)
-            lnnplus_cheby
-            lnnplus
-            error('nplus out of bound')
-        end
+%     parfor t = 1:T
+%         X(t,:) = ChebyshevND(degree,[lnAchebysim(t),lnKchebysim(t),lnNchebysim(t)]);
+%         a = exp(lnAsim(t)); k  = exp(lnKsim(t)); n = exp(lnNsim(t));
+%         tot_stuff = a*k^aalpha*n^(1-aalpha) + (1-ddelta)*k + z*(1-n);
+%         state = [lnAsim(t),lnKsim(t),lnNsim(t),tot_stuff,ustuff];
+%         lnEMH_guess = X(t,:)*coeff_lnmh;
+%         lnEMF_guess = X(t,:)*coeff_lnmf;
+%         x0 = [lnEMH_guess,lnEMF_guess];
+%         [lnEM_new(t,:),fval,exitflag] = nested_timeiter_obj(state,param,coeff_lnmh,coeff_lnmf,epsi_nodes,weight_nodes,n_nodes,x0,options);
+%     end
+
+    parfor t = 1:T-1
+        X(t,:) = ChebyshevND(degree,[lnAchebysim(t),lnKchebysim(t),lnNchebysim(t)]);
+        a = exp(lnAsim(t)); k  = exp(lnKsim(t)); n = exp(lnNsim(t));
+        tot_stuff = a*k^aalpha*n^(1-aalpha) + (1-ddelta)*k + z*(1-n);
         
-        % Find expected mh, mf tomorrow if current coeff applies tomorrow
-        lnEMH_hat = 0;
-        lnEMF_hat = 0;
+        EMH_hat = 0;
+        EMF_hat = 0;
         for i_node = 1:n_nodes
             eps = epsi_nodes(i_node);
-            lnaplus = rrho*lnAgrid(i_a) + ssigma*eps;
+            lnaplus = rrho*lnAsim(t) + ssigma*eps;
             lnaplus_cheby = -1 + 2*(lnaplus-min_lnA)/(max_lnA-min_lnA);
             if (lnaplus_cheby < -1 || lnaplus_cheby > 1)
                 error('Aplus out of bound')
             end
-            lnEMH_plus = ChebyshevND(degree,[lnaplus_cheby,lnkplus_cheby,lnnplus_cheby])*coeff_lnmh;
-            lnEMF_plus = ChebyshevND(degree,[lnaplus_cheby,lnkplus_cheby,lnnplus_cheby])*coeff_lnmf;
+            lnEMH_plus = ChebyshevND(degree,[lnaplus_cheby,lnKchebysim(t+1),lnNchebysim(t+1)])*coeff_lnmh;
+            lnEMF_plus = ChebyshevND(degree,[lnaplus_cheby,lnKchebysim(t+1),lnNchebysim(t+1)])*coeff_lnmf;
+            kplus = exp(lnKsim(t+1)); nplus = exp(lnNsim(t+1));
             cplus = 1/(bbeta*exp(lnEMH_plus));
             qplus = kkappa/cplus/(bbeta*exp(lnEMF_plus));
             tthetaplus = (qplus/xxi)^(1/(eeta-1));
-            lnEMH_hat = lnEMH_hat + weight_nodes(i_node)*((1-ddelta+aalpha*exp(lnaplus)*(kplus/nplus)^(aalpha-1))/cplus);
-            lnEMF_hat = lnEMF_hat + weight_nodes(i_node)*(( (1-ttau)*((1-aalpha)*exp(lnaplus)*(kplus/nplus)^aalpha-z-ggamma*cplus) + (1-x)*kkappa/qplus - ttau*kkappa*tthetaplus )/cplus );
-        end        
-        lnEM_new(i,:) = [lnEMH_hat,lnEMF_hat];
+            EMH_hat = EMH_hat + weight_nodes(i_node)*((1-ddelta+aalpha*exp(lnaplus)*(kplus/nplus)^(aalpha-1))/cplus);
+            EMF_hat = EMF_hat + weight_nodes(i_node)*(( (1-ttau)*((1-aalpha)*exp(lnaplus)*(kplus/nplus)^aalpha-z-ggamma*cplus) + (1-x)*kkappa/qplus - ttau*kkappa*tthetaplus )/cplus );
+        end
+        lnEM_new(t,:) = [log(EMH_hat),log(EMF_hat)];
     end
-    coeff = (X'*X)\(X'*lnEM_new);
+    
+    X_reg = X(burnin+1:end-1,:); Y_reg = lnEM_new(burnin+1:end-1,:);
+    coeff = (X_reg'*X_reg)\(X_reg'*Y_reg);
     coeff_lnmh_temp = coeff(:,1); coeff_lnmf_temp = coeff(:,2);
     
     %% Damped update
