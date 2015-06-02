@@ -10,11 +10,11 @@ mypara;
 min_lnA = log(0.5); max_lnA = log(1.5);
 min_lnK = log(900); max_lnK = log(1900);
 min_lnN = log(0.5); max_lnN = log(0.9999);
-degree = 7;
-nA = 9;
-nK = 9;
-nN = 9;
-damp_factor = 0.9;
+degree = 5;
+nA = 6;
+nK = 6;
+nN = 6;
+damp_factor = 0.3;
 maxiter = 10000;
 tol = 1e-6;
 options = optimoptions(@fsolve,'Display','final-detailed','Jacobian','off');
@@ -166,47 +166,58 @@ end;
 
 %% Euler equation error
 nk = 50; nA = 50; nnn = 50;
-lnKgrid = linspace(0.8*kss,1.2*kss,nk);
-lnAgrid = linspace(0.8,1.2,nA);
-lnNgrid = linspace(0.7,0.999,nnn);
+lnKgrid = log(linspace(0.8*kss,1.2*kss,nk));
+lnAgrid = log(linspace(0.8,1.2,nA));
+lnNgrid = log(linspace(0.7,0.999,nnn));
 EEerror_c = 999999*ones(nA,nk,nnn);
 EEerror_v = 999999*ones(nA,nk,nnn);
 
 for i_A = 1:nA
-    A = lnAgrid(i_A);
+    lna = lnAgrid(i_A);
+    lnacheby = -1 + 2*(lna-min_lnA)/(max_lnA-min_lnA);
     for i_k = 1:nk
-        k = lnKgrid(i_k);
+        lnk = lnKgrid(i_k);
+        lnkcheby = -1 + 2*(lnk-min_lnK)/(max_lnK-min_lnK);
         for i_n = 1:nnn
-            n = lnNgrid(i_n);
-            state(1) = A;
-            state(2) = k;
-            state(3) = n;
-            EM = exp([1 log(state)]*[coeff_mh coeff_mf]);
+            lnn = lnNgrid(i_n);
+            lnncheby = -1 + 2*(lnn-min_lnN)/(max_lnN-min_lnN);
+            a = exp(lna); k  = exp(lnk); n = exp(lnn);
+            tot_stuff = a*k^aalpha*n^(1-aalpha) + (1-ddelta)*k + z*(1-n);
+            ustuff = xxi*(1-n)^(1-eeta);
+            lnEMH = ChebyshevND(degree,[lnacheby,lnkcheby,lnncheby])*coeff_lnmh;
+            lnEMF = ChebyshevND(degree,[lnacheby,lnkcheby,lnncheby])*coeff_lnmf;
+            c = 1/(bbeta*exp(lnEMH));
+            q = kkappa/c/(bbeta*exp(lnEMF));
+            v = (q/ustuff)^(1/(eeta-1));
+            kplus = tot_stuff - c - kkappa*v;
+            nplus = (1-x)*exp(lnn) + q*v;
+            lnkplus = log(kplus); lnnplus = log(nplus);
+            lnkplus_cheby = -1 + 2*(lnkplus-min_lnK)/(max_lnK-min_lnK);
+            lnnplus_cheby = -1 + 2*(lnnplus-min_lnN)/(max_lnN-min_lnN);
             
-            y = A*(k)^(aalpha)*(n)^(1-aalpha);
-            c = (bbeta*EM(1))^(-1);
-            ttheta = (kkappa/(c*xxi*bbeta*EM(2)))^(1/(eeta-1));
-            v = ttheta*(1-n);
-            kplus = y - c +(1-ddelta)*k - kkappa*v + z*(1-n);
-            nplus = (1-x)*n + xxi*ttheta^(eeta)*(1-n);
-            
-            % Find expected mf and mh and implied consumption
-            Emf = 0; Emh = 0;
-            for i_node = 1:length(weight_nodes)
-                Aplus = exp(rrho_A*log(A) + ssigma_A*epsi_nodes(i_node));
-                state(1) = Aplus;
-                state(2) = kplus;
-                state(3) = nplus;
-                EM = exp([1 log(state)]*[coeff_mh coeff_mf]);
-                yplus = Aplus*(kplus)^(aalpha)*(nplus)^(1-aalpha);
-                cplus = (bbeta*EM(1))^(-1);
-                tthetaplus = (kkappa/(cplus*xxi*bbeta*EM(2)))^(1/(eeta-1));
-                Emh = Emh + weight_nodes(i_node)*((1-ddelta+aalpha*yplus/kplus)/cplus);
-                Emf = Emf + weight_nodes(i_node)*(( (1-ttau)*((1-aalpha)*yplus/nplus-z-ggamma*cplus) + (1-x)*kkappa/xxi*tthetaplus^(1-eeta) - ttau*kkappa*tthetaplus )/cplus );
+            % Find expectations
+            EMH_hat = 0;
+            EMF_hat = 0;
+            for i_node = 1:n_nodes
+                eps = epsi_nodes(i_node);
+                lnaplus = rrho*lna + ssigma*eps;
+                lnaplus_cheby = -1 + 2*(lnaplus-min_lnA)/(max_lnA-min_lnA);
+                if (lnaplus_cheby < -1 || lnaplus_cheby > 1)
+                    error('Aplus out of bound')
+                end
+                lnEMH_plus = ChebyshevND(degree,[lnaplus_cheby,lnkplus_cheby,lnnplus_cheby])*coeff_lnmh;
+                lnEMF_plus = ChebyshevND(degree,[lnaplus_cheby,lnkplus_cheby,lnnplus_cheby])*coeff_lnmf;
+                cplus = 1/(bbeta*exp(lnEMH_plus));
+                qplus = kkappa/cplus/(bbeta*exp(lnEMF_plus));
+                tthetaplus = (qplus/xxi)^(1/(eeta-1));
+                EMH_hat = EMH_hat + weight_nodes(i_node)*((1-ddelta+aalpha*exp(lnaplus)*(kplus/nplus)^(aalpha-1))/cplus);
+                EMF_hat = EMF_hat + weight_nodes(i_node)*(( (1-ttau)*((1-aalpha)*exp(lnaplus)*(kplus/nplus)^aalpha-z-ggamma*cplus) + (1-x)*kkappa/qplus - ttau*kkappa*tthetaplus )/cplus );
             end
-            c_imp = (bbeta*Emh)^(-1);
-            q_imp = kkappa/(c_imp*bbeta*Emf);
-            v_imp = (q_imp/(xxi*(1-n)^(1-eeta)))^(1/(eeta-1));
+            c_imp = 1/(bbeta*EMH_hat);
+            q_imp = kkappa/c_imp/(bbeta*EMF_hat);
+            ttheta_imp = (q_imp/xxi)^(1/(eeta-a));
+            v_imp = ttheta_imp*(1-n);
+
             EEerror_c(i_A,i_k,i_n) = abs((c-c_imp)/c_imp);   
             EEerror_v(i_A,i_k,i_n) = abs((v-v_imp)/v_imp);  
         end
@@ -244,21 +255,21 @@ mmummu = kk;
 for i_k = 1:nk
     for i_n = 1:nnn
         for i_A = 1:nA
-            state(1) = lnAgrid(i_A); A = state(1);
-            state(2) = lnKgrid(i_k); k = state(2);
-            state(3) = lnNgrid(i_n); n = state(3);
+            state(1) = lnAgrid(i_A); lna = state(1);
+            state(2) = lnKgrid(i_k); lnk = state(2);
+            state(3) = lnNgrid(i_n); lnn = state(3);
             EM = exp([1 log(state)]*[coeff_mh coeff_mf]);
             
-            y = A*(k)^(aalpha)*(n)^(1-aalpha);
+            y = lna*(lnk)^(aalpha)*(lnn)^(1-aalpha);
             c = (bbeta*EM(1))^(-1);
             ttheta = (kkappa/(c*xxi*bbeta*EM(2)))^(1/(eeta-1));
-            v = ttheta*(1-n);
-            mh = (1-ddelta+aalpha*y/k)/c;
-            mf = ( (1-ttau)*((1-aalpha)*y/n-z-ggamma*c) + (1-x)*kkappa/xxi*ttheta^(1-eeta) - ttau*kkappa*ttheta )/c;
-            w = ttau*A*k^(aalpha)*(1-aalpha)*n^(-aalpha) + (1-ttau)*(z+ggamma*c) + ttau*kkappa*ttheta;
+            v = ttheta*(1-lnn);
+            mh = (1-ddelta+aalpha*y/lnk)/c;
+            mf = ( (1-ttau)*((1-aalpha)*y/lnn-z-ggamma*c) + (1-x)*kkappa/xxi*ttheta^(1-eeta) - ttau*kkappa*ttheta )/c;
+            w = ttau*lna*lnk^(aalpha)*(1-aalpha)*lnn^(-aalpha) + (1-ttau)*(z+ggamma*c) + ttau*kkappa*ttheta;
     
-            kk(i_A,i_k,i_n) = y - c +(1-ddelta)*k - kkappa*v + z*(1-nn(i_A,i_k,i_n));
-            nn(i_A,i_k,i_n) = (1-x)*n + xxi*ttheta^(eeta)*(1-n);
+            kk(i_A,i_k,i_n) = y - c +(1-ddelta)*lnk - kkappa*v + z*(1-nn(i_A,i_k,i_n));
+            nn(i_A,i_k,i_n) = (1-x)*lnn + xxi*ttheta^(eeta)*(1-lnn);
             cc(i_A,i_k,i_n) = c;
             vv(i_A,i_k,i_n) = v;
             
@@ -331,13 +342,13 @@ axis tight
 
 %% Paths 1
 T = 5000; scale = 0;
-A = 0.6;
+lna = 0.6;
 k1 = zeros(1,T); n1 = zeros(1,T);
 k1(1) = 1100; n1(1) = 0.90;
 for t = 1:T
-    state = [A k1(t) n1(t)];
+    state = [lna k1(t) n1(t)];
     EM = exp([1 log(state)]*[coeff_mh coeff_mf]);
-    y = A*(k1(t))^(aalpha)*(n1(t))^(1-aalpha);
+    y = lna*(k1(t))^(aalpha)*(n1(t))^(1-aalpha);
     c = (bbeta*EM(1))^(-1);
     ttheta = (kkappa/(c*xxi*bbeta*EM(2)))^(1/(eeta-1));
     v = ttheta*(1-n1(t));
