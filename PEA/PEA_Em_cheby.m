@@ -7,14 +7,14 @@ addpath('../tools')
 
 %% Set the stage
 mypara;
-min_lnA = log(0.5); max_lnA = log(1.5);
+min_lnA = log(0.7); max_lnA = log(1.3);
 min_lnK = log(900); max_lnK = log(1900);
 min_lnN = log(0.5); max_lnN = log(0.9999);
-degree = 5;
-nA = 6;
-nK = 6;
-nN = 6;
-damp_factor = 0.3;
+degree = 6;
+nA = 10;
+nK = 10;
+nN = 10;
+damp_factor = 0.2;
 maxiter = 10000;
 tol = 1e-6;
 options = optimoptions(@fsolve,'Display','final-detailed','Jacobian','off');
@@ -165,63 +165,61 @@ while (diff>tol && iter <= maxiter)
 end;
 
 %% Euler equation error
-nk = 50; nA = 50; nnn = 50;
+nk = 30; nA = 30; nnn = 30;
 lnKgrid = log(linspace(0.8*kss,1.2*kss,nk));
 lnAgrid = log(linspace(0.8,1.2,nA));
 lnNgrid = log(linspace(0.7,0.999,nnn));
 EEerror_c = 999999*ones(nA,nk,nnn);
 EEerror_v = 999999*ones(nA,nk,nnn);
-
-for i_A = 1:nA
+      
+parfor i = 1:nA*nk*nnn
+    [i_A,i_k,i_n] = ind2sub([nA nk nnn],i);
+    lnk = lnKgrid(i_k);
+    lnkcheby = -1 + 2*(lnk-min_lnK)/(max_lnK-min_lnK);
     lna = lnAgrid(i_A);
     lnacheby = -1 + 2*(lna-min_lnA)/(max_lnA-min_lnA);
-    for i_k = 1:nk
-        lnk = lnKgrid(i_k);
-        lnkcheby = -1 + 2*(lnk-min_lnK)/(max_lnK-min_lnK);
-        for i_n = 1:nnn
-            lnn = lnNgrid(i_n);
-            lnncheby = -1 + 2*(lnn-min_lnN)/(max_lnN-min_lnN);
-            a = exp(lna); k  = exp(lnk); n = exp(lnn);
-            tot_stuff = a*k^aalpha*n^(1-aalpha) + (1-ddelta)*k + z*(1-n);
-            ustuff = xxi*(1-n)^(1-eeta);
-            lnEMH = ChebyshevND(degree,[lnacheby,lnkcheby,lnncheby])*coeff_lnmh;
-            lnEMF = ChebyshevND(degree,[lnacheby,lnkcheby,lnncheby])*coeff_lnmf;
-            c = 1/(bbeta*exp(lnEMH));
-            q = kkappa/c/(bbeta*exp(lnEMF));
-            v = (q/ustuff)^(1/(eeta-1));
-            kplus = tot_stuff - c - kkappa*v;
-            nplus = (1-x)*exp(lnn) + q*v;
-            lnkplus = log(kplus); lnnplus = log(nplus);
-            lnkplus_cheby = -1 + 2*(lnkplus-min_lnK)/(max_lnK-min_lnK);
-            lnnplus_cheby = -1 + 2*(lnnplus-min_lnN)/(max_lnN-min_lnN);
-            
-            % Find expectations
-            EMH_hat = 0;
-            EMF_hat = 0;
-            for i_node = 1:n_nodes
-                eps = epsi_nodes(i_node);
-                lnaplus = rrho*lna + ssigma*eps;
-                lnaplus_cheby = -1 + 2*(lnaplus-min_lnA)/(max_lnA-min_lnA);
-                if (lnaplus_cheby < -1 || lnaplus_cheby > 1)
-                    error('Aplus out of bound')
-                end
-                lnEMH_plus = ChebyshevND(degree,[lnaplus_cheby,lnkplus_cheby,lnnplus_cheby])*coeff_lnmh;
-                lnEMF_plus = ChebyshevND(degree,[lnaplus_cheby,lnkplus_cheby,lnnplus_cheby])*coeff_lnmf;
-                cplus = 1/(bbeta*exp(lnEMH_plus));
-                qplus = kkappa/cplus/(bbeta*exp(lnEMF_plus));
-                tthetaplus = (qplus/xxi)^(1/(eeta-1));
-                EMH_hat = EMH_hat + weight_nodes(i_node)*((1-ddelta+aalpha*exp(lnaplus)*(kplus/nplus)^(aalpha-1))/cplus);
-                EMF_hat = EMF_hat + weight_nodes(i_node)*(( (1-ttau)*((1-aalpha)*exp(lnaplus)*(kplus/nplus)^aalpha-z-ggamma*cplus) + (1-x)*kkappa/qplus - ttau*kkappa*tthetaplus )/cplus );
-            end
-            c_imp = 1/(bbeta*EMH_hat);
-            q_imp = kkappa/c_imp/(bbeta*EMF_hat);
-            ttheta_imp = (q_imp/xxi)^(1/(eeta-a));
-            v_imp = ttheta_imp*(1-n);
-
-            EEerror_c(i_A,i_k,i_n) = abs((c-c_imp)/c_imp);   
-            EEerror_v(i_A,i_k,i_n) = abs((v-v_imp)/v_imp);  
+    lnn = lnNgrid(i_n);
+    lnncheby = -1 + 2*(lnn-min_lnN)/(max_lnN-min_lnN);
+    a = exp(lna); k  = exp(lnk); n = exp(lnn);
+    tot_stuff = a*k^aalpha*n^(1-aalpha) + (1-ddelta)*k + z*(1-n);
+    ustuff = xxi*(1-n)^(1-eeta);
+    lnEMH = ChebyshevND(degree,[lnacheby,lnkcheby,lnncheby])*coeff_lnmh;
+    lnEMF = ChebyshevND(degree,[lnacheby,lnkcheby,lnncheby])*coeff_lnmf;
+    c = 1/(bbeta*exp(lnEMH));
+    q = kkappa/c/(bbeta*exp(lnEMF));
+    v = (q/ustuff)^(1/(eeta-1));
+    kplus = tot_stuff - c - kkappa*v;
+    nplus = (1-x)*exp(lnn) + q*v;
+    lnkplus = log(kplus); lnnplus = log(nplus);
+    lnkplus_cheby = -1 + 2*(lnkplus-min_lnK)/(max_lnK-min_lnK);
+    lnnplus_cheby = -1 + 2*(lnnplus-min_lnN)/(max_lnN-min_lnN);
+    
+    % Find expectations
+    EMH_hat = 0;
+    EMF_hat = 0;
+    for i_node = 1:n_nodes
+        eps = epsi_nodes(i_node);
+        lnaplus = rrho*lna + ssigma*eps;
+        lnaplus_cheby = -1 + 2*(lnaplus-min_lnA)/(max_lnA-min_lnA);
+        if (lnaplus_cheby < -1 || lnaplus_cheby > 1)
+            error('Aplus out of bound')
         end
+        lnEMH_plus = ChebyshevND(degree,[lnaplus_cheby,lnkplus_cheby,lnnplus_cheby])*coeff_lnmh;
+        lnEMF_plus = ChebyshevND(degree,[lnaplus_cheby,lnkplus_cheby,lnnplus_cheby])*coeff_lnmf;
+        cplus = 1/(bbeta*exp(lnEMH_plus));
+        qplus = kkappa/cplus/(bbeta*exp(lnEMF_plus));
+        tthetaplus = (qplus/xxi)^(1/(eeta-1));
+        EMH_hat = EMH_hat + weight_nodes(i_node)*((1-ddelta+aalpha*exp(lnaplus)*(kplus/nplus)^(aalpha-1))/cplus);
+        EMF_hat = EMF_hat + weight_nodes(i_node)*(( (1-ttau)*((1-aalpha)*exp(lnaplus)*(kplus/nplus)^aalpha-z-ggamma*cplus) + (1-x)*kkappa/qplus - ttau*kkappa*tthetaplus )/cplus );
     end
+    c_imp = 1/(bbeta*EMH_hat);
+    q_imp = kkappa/c_imp/(bbeta*EMF_hat);
+    ttheta_imp = (q_imp/xxi)^(1/(eeta-1));
+    v_imp = ttheta_imp*(1-n);
+    
+    EEerror_c(i) = abs((c-c_imp)/c_imp);
+    EEerror_v(i) = abs((v-v_imp)/v_imp);
+    
 end
 EEerror_c_inf = norm(EEerror_c(:),inf);
 EEerror_v_inf = norm(EEerror_v(:),inf);
