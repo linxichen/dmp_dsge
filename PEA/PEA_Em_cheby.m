@@ -123,8 +123,8 @@ while (diff>tol && iter <= maxiter)
         end
         
         % Find expected mh, mf tomorrow if current coeff applies tomorrow
-        lnEMH_hat = 0;
-        lnEMF_hat = 0;
+        EMH_hat = 0;
+        EMF_hat = 0;
         for i_node = 1:n_nodes
             eps = epsi_nodes(i_node);
             lnaplus = rrho*lnAgrid(i_a) + ssigma*eps;
@@ -137,10 +137,10 @@ while (diff>tol && iter <= maxiter)
             cplus = 1/(bbeta*exp(lnEMH_plus));
             qplus = kkappa/cplus/(bbeta*exp(lnEMF_plus));
             tthetaplus = (qplus/xxi)^(1/(eeta-1));
-            lnEMH_hat = lnEMH_hat + weight_nodes(i_node)*((1-ddelta+aalpha*exp(lnaplus)*(kplus/nplus)^(aalpha-1))/cplus);
-            lnEMF_hat = lnEMF_hat + weight_nodes(i_node)*(( (1-ttau)*((1-aalpha)*exp(lnaplus)*(kplus/nplus)^aalpha-z-ggamma*cplus) + (1-x)*kkappa/qplus - ttau*kkappa*tthetaplus )/cplus );
+            EMH_hat = EMH_hat + weight_nodes(i_node)*((1-ddelta+aalpha*exp(lnaplus)*(kplus/nplus)^(aalpha-1))/cplus);
+            EMF_hat = EMF_hat + weight_nodes(i_node)*(( (1-ttau)*((1-aalpha)*exp(lnaplus)*(kplus/nplus)^aalpha-z-ggamma*cplus) + (1-x)*kkappa/qplus - ttau*kkappa*tthetaplus )/cplus );
         end        
-        lnEM_new(i,:) = [lnEMH_hat,lnEMF_hat];
+        lnEM_new(i,:) = [log(EMH_hat),log(EMF_hat)];
     end
     coeff = (X'*X)\(X'*lnEM_new);
     coeff_lnmh_temp = coeff(:,1); coeff_lnmf_temp = coeff(:,2);
