@@ -8,21 +8,21 @@ addpath('../tools')
 %% Set the stage
 mypara;
 min_lnA = log(0.5); max_lnA = log(1.7);
-min_lnK = log(100); max_lnK = log(3000);
+min_lnK = log(300); max_lnK = log(3000);
 min_lnN = log(0.1); max_lnN = log(0.9999);
 degree = 7;
-nA = 10;
-nK = 10;
-nN = 10;
-damp_factor = 0.2;
+nA = 7;
+nK = 7;
+nN = 7;
+damp_factor = 0.6;
 maxiter = 10000;
-tol = 1.5e-7;
+tol = 2.0e-5;
 options = optimoptions(@fsolve,'Display','final-detailed','Jacobian','off');
-[epsi_nodes,weight_nodes] = GH_nice(9,0,1);
+[epsi_nodes,weight_nodes] = GH_nice(3,0,1);
 n_nodes = length(epsi_nodes);
 
 %% Grid creaton
-lnAgrid = ChebyshevRoots(nA,'Tn',[log(0.85),log(1.15)]);
+lnAgrid = ChebyshevRoots(nA,'Tn',[min_lnA,max_lnA]);
 lnKgrid = ChebyshevRoots(nK,'Tn',[min_lnK,max_lnK]);
 lnNgrid = ChebyshevRoots(nN,'Tn',[min_lnN,max_lnN]);
 lnAchebygrid = ChebyshevRoots(nA,'Tn');
