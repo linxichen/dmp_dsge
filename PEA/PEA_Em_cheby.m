@@ -7,16 +7,16 @@ addpath('../tools')
 
 %% Set the stage
 mypara;
-min_lnA = log(0.7); max_lnA = log(1.4);
-min_lnK = log(500); max_lnK = log(3000);
-min_lnN = log(0.8); max_lnN = log(0.9999);
+min_lnA = log(0.5); max_lnA = log(1.7);
+min_lnK = log(100); max_lnK = log(3000);
+min_lnN = log(0.1); max_lnN = log(0.9999);
 degree = 7;
-nA = 30;
-nK = 50;
-nN = 50;
-damp_factor = 0.4;
+nA = 10;
+nK = 10;
+nN = 10;
+damp_factor = 0.2;
 maxiter = 10000;
-tol = 1.5e-4;
+tol = 1.5e-7;
 options = optimoptions(@fsolve,'Display','final-detailed','Jacobian','off');
 [epsi_nodes,weight_nodes] = GH_nice(9,0,1);
 n_nodes = length(epsi_nodes);
@@ -156,7 +156,7 @@ while (diff>tol && iter <= maxiter)
 end;
 
 %% Euler equation error
-nk = 30; nA = 30; nnn = 30;
+nk = 10; nA = 10; nnn = 10;
 lnKgrid = log(linspace(0.8*kss,1.2*kss,nk));
 lnAgrid = log(linspace(0.8,1.2,nA));
 lnNgrid = log(linspace(0.9,0.999,nnn));
@@ -208,8 +208,8 @@ parfor i = 1:nA*nk*nnn
     ttheta_imp = (q_imp/xxi)^(1/(eeta-1));
     v_imp = ttheta_imp*(1-n);
     
-    EEerror_c(i) = abs((c-c_imp)/c_imp);
-    EEerror_v(i) = abs((v-v_imp)/v_imp);
+    EEerror_c(i) = abs((c-c_imp)/c_ss);
+    EEerror_v(i) = abs((v-v_imp)/v_ss);
     
 end
 EEerror_c_inf = norm(EEerror_c(:),inf);
@@ -221,6 +221,15 @@ EEerror_v_mean = mean(EEerror_v(:));
 figure
 plot(lnKgrid,EEerror_c(ceil(nA/2),:,ceil(nnn/2)))
 
+figure
+plot(lnKgrid,EEerror_v(ceil(nA/2),:,ceil(nnn/2)))
+xlabel('log(k)')
+ylabel('Error in vacancy')
+
+figure
+plot(lnNgrid,squeeze(EEerror_v(ceil(nA/2),ceil(nA/2),:)))
+xlabel('log(n)')
+ylabel('Error in vacancy')
 %% Implied policy functions and find wages
 lnAgrid = csvread('../CUDA_VFI/results/Agrid.csv');
 lnKgrid = csvread('../CUDA_VFI/results/Kgrid.csv');
@@ -313,59 +322,3 @@ xlabel('k(t)')
 ylabel('Tightness')
 legend('Nonlinear')
 
-%% Ergodic set where art thou?
-    figure
-    scatter3(Asim,ksim,nsim)
-    xlabel('Productivity')
-    ylabel('Capital')
-    zlabel('Employment')
-
-%% Dynamics
-Aindex = ceil(nA/2);
-figure
-[Kmesh,Nmesh] = meshgrid(lnKgrid,lnNgrid);
-DK = squeeze(kk(Aindex,:,:))-Kmesh';
-DN = squeeze(nn(Aindex,:,:))-Nmesh';
-quiver(Kmesh',Nmesh',DK,DN,2);
-axis tight
-
-%% Paths 1
-T = 5000; scale = 0;
-lna = 0.6;
-k1 = zeros(1,T); n1 = zeros(1,T);
-k1(1) = 1100; n1(1) = 0.90;
-for t = 1:T
-    state = [lna k1(t) n1(t)];
-    EM = exp([1 log(state)]*[coeff_mh coeff_mf]);
-    y = lna*(k1(t))^(aalpha)*(n1(t))^(1-aalpha);
-    c = (bbeta*EM(1))^(-1);
-    ttheta = (kkappa/(c*xxi*bbeta*EM(2)))^(1/(eeta-1));
-    v = ttheta*(1-n1(t));
-    
-    if t < T
-    k1(t+1) = y - c +(1-ddelta)*k1(t) - kkappa*v;
-    n1(t+1) = (1-x)*n1(t) + xxi*ttheta^(eeta)*(1-n1(t));
-    end
-end
-xx = k1; y = n1;
-u = [k1(2:end)-k1(1:end-1) 0];
-v = [n1(2:end)-n1(1:end-1) 0];
-
-figure
-quiver(xx,y,u,v,scale,'Linewidth',0.3);
-
-
-
-wage_export = wage_export(:);
-ttheta_export = ttheta_export(:);
-cc = cc(:);
-kk = kk(:);
-nn = nn(:);
-dlmwrite('../CUDA_VFI/wage_export.csv',wage_export,'precision',16);
-dlmwrite('../CUDA_VFI/ttheta_export.csv',ttheta_export,'precision',16);
-dlmwrite('../CUDA_VFI/cPEA_export.csv',cc,'precision',16);
-dlmwrite('../CUDA_VFI/kPEA_export.csv',kk,'precision',16);
-dlmwrite('../CUDA_VFI/nPEA_export.csv',nn,'precision',16);
-
-
-save('PEA_Em.mat');
