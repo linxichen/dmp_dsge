@@ -7,24 +7,24 @@ addpath('../tools')
 
 %% Set the stage
 mypara;
-min_lnA = log(0.7); max_lnA = log(1.3);
-min_lnK = log(900); max_lnK = log(1900);
-min_lnN = log(0.5); max_lnN = log(0.9999);
-degree = 6;
-nA = 7;
-nK = 7;
-nN = 7;
-damp_factor = 0.2;
+min_lnA = log(0.7); max_lnA = log(1.4);
+min_lnK = log(500); max_lnK = log(3000);
+min_lnN = log(0.8); max_lnN = log(0.9999);
+degree = 7;
+nA = 30;
+nK = 50;
+nN = 50;
+damp_factor = 0.4;
 maxiter = 10000;
-tol = 1e-4;
+tol = 1.5e-4;
 options = optimoptions(@fsolve,'Display','final-detailed','Jacobian','off');
-[epsi_nodes,weight_nodes] = GH_nice(5,0,1);
+[epsi_nodes,weight_nodes] = GH_nice(9,0,1);
 n_nodes = length(epsi_nodes);
 
 %% Grid creaton
 lnAgrid = ChebyshevRoots(nA,'Tn',[log(0.85),log(1.15)]);
-lnKgrid = ChebyshevRoots(nK,'Tn',[log(1200),log(1500)]);
-lnNgrid = ChebyshevRoots(nN,'Tn',[log(0.9),log(0.98)]);
+lnKgrid = ChebyshevRoots(nK,'Tn',[min_lnK,max_lnK]);
+lnNgrid = ChebyshevRoots(nN,'Tn',[min_lnN,max_lnN]);
 lnAchebygrid = ChebyshevRoots(nA,'Tn');
 lnKchebygrid = ChebyshevRoots(nK,'Tn');
 lnNchebygrid = ChebyshevRoots(nN,'Tn');
@@ -67,23 +67,12 @@ parfor i = 1:N
     X(i,:) = ChebyshevND(degree,[lnAchebygrid(i_a),lnKchebygrid(i_k),lnNchebygrid(i_n)])
 end
 
+coeff_lnmh = zeros(1,K);
+coeff_lnmf = zeros(1,K);
 %% Create a initial guess from a rough PEA solution
-if (exist('PEA_Em.mat','file')==2)
-    load('PEA_Em.mat','coeff_mh','coeff_mf')
-else
-    coeff_mh = [2.197278872016918; -0.030892629079668; -0.581445054648990; -0.004225383144729]; % one constant, each for state variable
-    coeff_mf = [2.281980399764238; 1.729203578753512; -0.315489670998162; -0.115805845378316];
+if (exist('PEA_Em_cheby.mat','file')==2)
+	load('PEA_Em_cheby.mat','coeff_lnmh','coeff_lnmf');
 end
-lnEmh_train = zeros(N,1); lnEmf_train = zeros(N,1);
-parfor i = 1:N
-    [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);
-    lnEmh_train(i) = ([1 lnAgrid(i_a) lnKgrid(i_k) lnNgrid(i_n)]*coeff_mh);
-    lnEmf_train(i) = ([1 lnAgrid(i_a) lnKgrid(i_k) lnNgrid(i_n)]*coeff_mf)
-end
-coeff_lnmh = (X'*X)\(X'*(lnEmh_train));
-coeff_lnmf = (X'*X)\(X'*(lnEmf_train));
-coeff_lnmh_old = coeff_lnmh;
-coeff_lnmf_old = coeff_lnmf;
 
 lnEM_new = zeros(N,2);
 
@@ -130,6 +119,8 @@ while (diff>tol && iter <= maxiter)
             lnaplus = rrho*lnAgrid(i_a) + ssigma*eps;
             lnaplus_cheby = -1 + 2*(lnaplus-min_lnA)/(max_lnA-min_lnA);
             if (lnaplus_cheby < -1 || lnaplus_cheby > 1)
+				lnAgrid(i_a)
+				lnaplus
                 error('Aplus out of bound')
             end
             lnEMH_plus = ChebyshevND(degree,[lnaplus_cheby,lnkplus_cheby,lnnplus_cheby])*coeff_lnmh;
@@ -168,7 +159,7 @@ end;
 nk = 30; nA = 30; nnn = 30;
 lnKgrid = log(linspace(0.8*kss,1.2*kss,nk));
 lnAgrid = log(linspace(0.8,1.2,nA));
-lnNgrid = log(linspace(0.7,0.999,nnn));
+lnNgrid = log(linspace(0.9,0.999,nnn));
 EEerror_c = 999999*ones(nA,nk,nnn);
 EEerror_v = 999999*ones(nA,nk,nnn);
       
