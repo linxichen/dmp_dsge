@@ -11,12 +11,12 @@ min_lnA = log(0.5); max_lnA = log(1.5);
 min_lnK = log(900); max_lnK = log(1900);
 min_lnN = log(0.5); max_lnN = log(0.9999);
 degree = 7;
-nA = 9;
-nK = 9;
-nN = 9;
-damp_factor = 0.9;
+nA = 8;
+nK = 8;
+nN = 8;
+damp_factor = 0.0;
 maxiter = 10000;
-tol = 1e-6;
+tol = 3e-4;
 options = optimoptions(@fsolve,'Display','final-detailed','Jacobian','off');
 [epsi_nodes,weight_nodes] = GH_nice(5,0,1);
 n_nodes = length(epsi_nodes);
@@ -99,7 +99,7 @@ opts.MaxIter = 10000;
 diff = 10; iter = 0;
 while (diff>tol && iter <= maxiter)
     %% Time iter step, find EMF EMH that solve euler exactly
-    for i = 1:N
+    parfor i = 1:N
         [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);
         state = [lnAgrid(i_a),lnKgrid(i_k),lnNgrid(i_n),tot_stuff(i),ustuff(i)];
         lnEMH = ChebyshevND(degree,[lnAchebygrid(i_a),lnKchebygrid(i_k),lnNchebygrid(i_n)])*coeff_lnmh;
@@ -165,50 +165,71 @@ while (diff>tol && iter <= maxiter)
 end;
 
 %% Euler equation error
-nk = 50; nA = 50; nnn = 50;
-lnKgrid = linspace(0.8*kss,1.2*kss,nk);
-lnAgrid = linspace(0.8,1.2,nA);
-lnNgrid = linspace(0.7,0.999,nnn);
+nk = 10; nA = 10; nnn = 10;
+Kgrid = linspace(1100,1500,nk);
+Agrid = linspace(0.85,1.15,nA);
+Ngrid = linspace(0.9,0.97,nnn);
 EEerror_c = 999999*ones(nA,nk,nnn);
 EEerror_v = 999999*ones(nA,nk,nnn);
 
-for i_A = 1:nA
-    A = lnAgrid(i_A);
+for i_a = 1:nA
+    a = Agrid(i_a);
+	lna_cheby = -1 + 2*( log(a) - min_lnA)/(max_lnA - min_lnA);
     for i_k = 1:nk
-        k = lnKgrid(i_k);
+        k = Kgrid(i_k);
         for i_n = 1:nnn
-            n = lnNgrid(i_n);
-            state(1) = A;
-            state(2) = k;
-            state(3) = n;
-            EM = exp([1 log(state)]*[coeff_mh coeff_mf]);
-            
-            y = A*(k)^(aalpha)*(n)^(1-aalpha);
-            c = (bbeta*EM(1))^(-1);
-            ttheta = (kkappa/(c*xxi*bbeta*EM(2)))^(1/(eeta-1));
-            v = ttheta*(1-n);
-            kplus = y - c +(1-ddelta)*k - kkappa*v + z*(1-n);
-            nplus = (1-x)*n + xxi*ttheta^(eeta)*(1-n);
-            
-            % Find expected mf and mh and implied consumption
-            Emf = 0; Emh = 0;
-            for i_node = 1:length(weight_nodes)
-                Aplus = exp(rrho_A*log(A) + ssigma_A*epsi_nodes(i_node));
-                state(1) = Aplus;
-                state(2) = kplus;
-                state(3) = nplus;
-                EM = exp([1 log(state)]*[coeff_mh coeff_mf]);
-                yplus = Aplus*(kplus)^(aalpha)*(nplus)^(1-aalpha);
-                cplus = (bbeta*EM(1))^(-1);
-                tthetaplus = (kkappa/(cplus*xxi*bbeta*EM(2)))^(1/(eeta-1));
-                Emh = Emh + weight_nodes(i_node)*((1-ddelta+aalpha*yplus/kplus)/cplus);
-                Emf = Emf + weight_nodes(i_node)*(( (1-ttau)*((1-aalpha)*yplus/nplus-z-ggamma*cplus) + (1-x)*kkappa/xxi*tthetaplus^(1-eeta) - ttau*kkappa*tthetaplus )/cplus );
-            end
-            c_imp = (bbeta*Emh)^(-1);
-            q_imp = kkappa/(c_imp*bbeta*Emf);
-            v_imp = (q_imp/(xxi*(1-n)^(1-eeta)))^(1/(eeta-1));
-            EEerror_c(i_A,i_k,i_n) = abs((c-c_imp)/c_imp);   
-            EEerror_v(i_A,i_k,i_n) = abs((v-v_imp)/v_imp);  
+            n = Ngrid(i_n);
+			tot_stuff = a*k^aalpha*n^(1-aalpha)+(1-ddelta)*k+z*(1-n);
+			ustuff = xxi*(1-n)^(1-eeta);
+			state = [log(a),log(k),log(n),tot_stuff,ustuff];
+			lnk_cheby = -1 + 2*(log(k)-min_lnK)/(max_lnK-min_lnK);
+			lnn_cheby = -1 + 2*(log(n)-min_lnN)/(max_lnN-min_lnN);
+			lnEMH = ChebyshevND(degree,[lna_cheby,lnk_cheby,lnn_cheby])*coeff_lnmh;
+			lnEMF = ChebyshevND(degree,[lna_cheby,lnk_cheby,lnn_cheby])*coeff_lnmf;
+			c = 1/(bbeta*exp(lnEMH));
+			q = kkappa/c/(bbeta*exp(lnEMF));
+			v = (q/ustuff)^(1/(eeta-1));
+			kplus = tot_stuff - c - kkappa*v;
+			nplus = (1-x)*n + q*v;
+			lnkplus = log(kplus); lnnplus = log(nplus);
+			lnkplus_cheby = -1 + 2*(lnkplus-min_lnK)/(max_lnK-min_lnK);
+			lnnplus_cheby = -1 + 2*(lnnplus-min_lnN)/(max_lnN-min_lnN);
+			if (lnkplus_cheby < -1 || lnkplus_cheby > 1)
+				lnkplus
+				error('kplus out of bound')
+			end
+			if (lnnplus_cheby < -1 || lnnplus_cheby > 1)
+				lnnplus_cheby
+				lnnplus
+				error('nplus out of bound')
+			end
+
+			% Find expected mh, mf tomorrow if current coeff applies tomorrow
+			EMH_hat = 0;
+			EMF_hat = 0;
+			for i_node = 1:n_nodes
+				eps = epsi_nodes(i_node);
+				lnaplus = rrho*log(a) + ssigma*eps;
+				lnaplus_cheby = -1 + 2*(lnaplus-min_lnA)/(max_lnA-min_lnA);
+				if (lnaplus_cheby < -1 || lnaplus_cheby > 1)
+					error('Aplus out of bound')
+				end
+				lnEMH_plus = ChebyshevND(degree,[lnaplus_cheby,lnkplus_cheby,lnnplus_cheby])*coeff_lnmh;
+				lnEMF_plus = ChebyshevND(degree,[lnaplus_cheby,lnkplus_cheby,lnnplus_cheby])*coeff_lnmf;
+				cplus = 1/(bbeta*exp(lnEMH_plus));
+				qplus = kkappa/cplus/(bbeta*exp(lnEMF_plus));
+				tthetaplus = (qplus/xxi)^(1/(eeta-1));
+				EMH_hat = EMH_hat + weight_nodes(i_node)*((1-ddelta+aalpha*exp(lnaplus)*(kplus/nplus)^(aalpha-1))/cplus);
+				EMF_hat = EMF_hat + weight_nodes(i_node)*(( (1-ttau)*((1-aalpha)*exp(lnaplus)*(kplus/nplus)^aalpha-z-ggamma*cplus) + (1-x)*kkappa/qplus - ttau*kkappa*tthetaplus )/cplus );
+			end        
+
+			c_imp = 1/(bbeta*EMH_hat);
+			q_imp = kkappa/c_imp/(bbeta*EMF_hat);
+			ttheta_imp = (q_imp/xxi)^(1/(eeta-1));
+			v_imp = ttheta_imp*(1-n);
+
+            EEerror_c(i_a,i_k,i_n) = abs((c-c_imp)/c_imp);   
+            EEerror_v(i_a,i_k,i_n) = abs((v-v_imp)/v_imp);  
         end
     end
 end
