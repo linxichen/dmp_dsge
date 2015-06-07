@@ -7,18 +7,19 @@ addpath('../tools')
 
 %% Set the stage
 mypara;
-min_lnA = log(0.5); max_lnA = log(1.7);
-min_lnK = log(300); max_lnK = log(3000);
-min_lnN = log(0.1); max_lnN = log(0.99);
+[P_Rouw,z_Rouw] = rouwen(rrho,0,ssigma/sqrt(1-rrho^2),21);
+min_lnA = log(0.6); max_lnA = log(1.4);
+min_lnK = log(500); max_lnK = log(2500);
+min_lnN = log(0.5); max_lnN = log(1.0);
 degree = 7;
-nA = 8;
-nK = 10;
-nN = 12;
-damp_factor = 0.3;
+nA = 10;
+nK = 20;
+nN = 50;
+damp_factor = 0.5;
 maxiter = 10000;
-tol = 2.0e-5;
+tol = 1e-3;
 options = optimoptions(@fsolve,'Display','final-detailed','Jacobian','off');
-[epsi_nodes,weight_nodes] = GH_nice(3,0,1);
+[epsi_nodes,weight_nodes] = GH_nice(7,0,1);
 n_nodes = length(epsi_nodes);
 
 %% Grid creaton
@@ -111,7 +112,7 @@ opts.MaxIter = 10000;
 diff = 10; iter = 0;
 while (diff>tol && iter <= maxiter)
     %% Fixed point iter step, find EMF EMH that solve euler exactly
-    for i = 1:N
+    parfor i = 1:N
         [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);
         state = [lnAgrid(i_a),lnKgrid(i_k),lnNgrid(i_n),tot_stuff(i),ustuff(i)];
         
@@ -227,6 +228,7 @@ parfor i = 1:nA*nk*nnn
         cplus = exp(lnc_plus);
         vplus = exp(lnv_plus);
         tthetaplus = vplus/(1-nplus);
+        qplus = xxi*tthetaplus^(eeta-1);
         EMH_hat = EMH_hat + weight_nodes(i_node)*((1-ddelta+aalpha*exp(lnaplus)*(kplus/nplus)^(aalpha-1))/cplus);
         EMF_hat = EMF_hat + weight_nodes(i_node)*(( (1-ttau)*((1-aalpha)*exp(lnaplus)*(kplus/nplus)^aalpha-z-ggamma*cplus) + (1-x)*kkappa/qplus - ttau*kkappa*tthetaplus )/cplus );
     end
@@ -239,62 +241,11 @@ parfor i = 1:nA*nk*nnn
     EEerror_v(i) = abs((v-v_imp)/v_ss);
     
 end
-EEerror_c_inf = norm(EEerror_c(:),inf);
-EEerror_v_inf = norm(EEerror_v(:),inf);
+EEerror_c_inf = norm(EEerror_c(:),inf)
+EEerror_v_inf = norm(EEerror_v(:),inf)
 
-EEerror_c_mean = mean(EEerror_c(:));
-EEerror_v_mean = mean(EEerror_v(:));
-
-figure
-plot(lnKgrid_ee,EEerror_c(ceil(nA/2),:,ceil(nnn/2)))
-
-figure
-plot(lnKgrid_ee,EEerror_v(ceil(nA/2),:,ceil(nnn/2)))
-xlabel('log(k)')
-ylabel('Error in vacancy')
-
-figure
-plot(lnNgrid_ee,squeeze(EEerror_v(ceil(nA/2),ceil(nA/2),:)))
-xlabel('log(n)')
-ylabel('Error in vacancy')
+EEerror_c_mean = mean(EEerror_c(:))
+EEerror_v_mean = mean(EEerror_v(:))
 
 
-
-i_mid_n = ceil(nnn/2);
-i_mid_A = ceil(nA/2);
-linewitdh=1.5;
-figure
-plot(lnKgrid_ee,squeeze(kk(i_mid_A,:,i_mid_n)),lnKgrid_ee,squeeze(kk_dynare(i_mid_A,:,i_mid_n)),'LineWidth',linewitdh)
-axis('tight')
-xlabel('k(t)')
-ylabel('k(t+1)')
-legend('Nonlinear','Linear')
-
-figure
-plot(lnKgrid_ee,squeeze(nn(i_mid_A,:,i_mid_n)),lnKgrid_ee,squeeze(nn_dynare(i_mid_A,:,i_mid_n)),'LineWidth',linewitdh)
-axis('tight')
-xlabel('k(t)')
-ylabel('n(t+1)')
-legend('Nonlinear','Linear')
-
-figure
-plot(lnKgrid_ee,squeeze(cc(i_mid_A,:,i_mid_n)),lnKgrid_ee,squeeze(cc_dynare(i_mid_A,:,i_mid_n)),'LineWidth',linewitdh)
-axis('tight')
-xlabel('k(t)')
-ylabel('c(t)')
-legend('Nonlinear','Linear')
-
-figure
-plot(lnKgrid_ee,squeeze(wage_export(i_mid_A,:,i_mid_n)),'LineWidth',linewitdh)
-axis('tight')
-xlabel('k(t)')
-ylabel('wage')
-legend('Nonlinear')
-
-figure
-plot(lnKgrid_ee,squeeze(ttheta_export(i_mid_A,:,i_mid_n)),'LineWidth',linewitdh)
-axis('tight')
-xlabel('k(t)')
-ylabel('Tightness')
-legend('Nonlinear')
 
