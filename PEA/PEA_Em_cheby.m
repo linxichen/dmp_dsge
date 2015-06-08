@@ -19,7 +19,7 @@ degree = 7;
 damp_factor = 0.0;
 maxiter = 10000;
 tol = 1e-4;
-options = optimoptions(@fsolve,'Display','none','Jacobian','off');
+options = optimoptions(@fsolve,'Display','final-detailed','Jacobian','off');
 
 %% Grid creaton
 lnKgrid = ChebyshevRoots(nK,'Tn',[min_lnK,max_lnK]);
@@ -98,7 +98,7 @@ opts.MaxIter = 10000;
 diff = 10; iter = 0;
 while (diff>tol && iter <= maxiter)
     %% Time iter step, find EMF EMH that solve euler exactly
-    for i = 1:N
+    parfor i = 1:N
         [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);
         state = [lnAgrid(i_a),lnKgrid(i_k),lnNgrid(i_n),tot_stuff(i),ustuff(i),i_a];
         lnEMH_guess = ChebyshevND(degree,[lnAchebygrid(i_a),lnKchebygrid(i_k),lnNchebygrid(i_n)])*coeff_lnmh;
