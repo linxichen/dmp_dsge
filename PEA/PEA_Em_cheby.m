@@ -7,24 +7,23 @@ addpath('../tools')
 
 %% Set the stage
 mypara;
-min_lnA = log(0.5); max_lnA = log(1.5);
+nA = 17;
+nK = 8;
+nN = 20;
+[P,lnAgrid] = rouwen(rrho,0,ssigma/sqrt(1-rrho^2),nA);
+P = P';
+min_lnA = lnAgrid(1); max_lnA = lnAgrid(end);
 min_lnK = log(900); max_lnK = log(1900);
 min_lnN = log(0.5); max_lnN = log(0.9999);
 degree = 7;
-nA = 8;
-nK = 8;
-nN = 8;
 damp_factor = 0.0;
 maxiter = 10000;
-tol = 3e-4;
+tol = 1e-4;
 options = optimoptions(@fsolve,'Display','final-detailed','Jacobian','off');
-[epsi_nodes,weight_nodes] = GH_nice(5,0,1);
-n_nodes = length(epsi_nodes);
 
 %% Grid creaton
-lnAgrid = ChebyshevRoots(nA,'Tn',[log(0.85),log(1.15)]);
-lnKgrid = ChebyshevRoots(nK,'Tn',[log(1200),log(1500)]);
-lnNgrid = ChebyshevRoots(nN,'Tn',[log(0.9),log(0.98)]);
+lnKgrid = ChebyshevRoots(nK,'Tn',[min_lnK,max_lnK]);
+lnNgrid = ChebyshevRoots(nN,'Tn',[min_lnN,max_lnN]);
 lnAchebygrid = ChebyshevRoots(nA,'Tn');
 lnKchebygrid = ChebyshevRoots(nK,'Tn');
 lnNchebygrid = ChebyshevRoots(nN,'Tn');
@@ -125,10 +124,9 @@ while (diff>tol && iter <= maxiter)
         % Find expected mh, mf tomorrow if current coeff applies tomorrow
         EMH_hat = 0;
         EMF_hat = 0;
-        for i_node = 1:n_nodes
-            eps = epsi_nodes(i_node);
-            lnaplus = rrho*lnAgrid(i_a) + ssigma*eps;
-            lnaplus_cheby = -1 + 2*(lnaplus-min_lnA)/(max_lnA-min_lnA);
+        for i_node = 1:nA
+            lnaplus = lnAgrid(i_node);
+            lnaplus_cheby =lnAchebygrid(i_node);
             if (lnaplus_cheby < -1 || lnaplus_cheby > 1)
                 error('Aplus out of bound')
             end
@@ -137,8 +135,8 @@ while (diff>tol && iter <= maxiter)
             cplus = 1/(bbeta*exp(lnEMH_plus));
             qplus = kkappa/cplus/(bbeta*exp(lnEMF_plus));
             tthetaplus = (qplus/xxi)^(1/(eeta-1));
-            EMH_hat = EMH_hat + weight_nodes(i_node)*((1-ddelta+aalpha*exp(lnaplus)*(kplus/nplus)^(aalpha-1))/cplus);
-            EMF_hat = EMF_hat + weight_nodes(i_node)*(( (1-ttau)*((1-aalpha)*exp(lnaplus)*(kplus/nplus)^aalpha-z-ggamma*cplus) + (1-x)*kkappa/qplus - ttau*kkappa*tthetaplus )/cplus );
+            EMH_hat = EMH_hat + P(i_a,i_node)*((1-ddelta+aalpha*exp(lnaplus)*(kplus/nplus)^(aalpha-1))/cplus);
+            EMF_hat = EMF_hat + P(i_a,i_node)*(( (1-ttau)*((1-aalpha)*exp(lnaplus)*(kplus/nplus)^aalpha-z-ggamma*cplus) + (1-x)*kkappa/qplus - ttau*kkappa*tthetaplus )/cplus );
         end        
         lnEM_new(i,:) = [log(EMH_hat),log(EMF_hat)];
     end
@@ -165,16 +163,16 @@ while (diff>tol && iter <= maxiter)
 end;
 
 %% Euler equation error
-nk = 10; nA = 10; nnn = 10;
+nk = 10; nnn = 10;
 Kgrid = linspace(1100,1500,nk);
-Agrid = linspace(0.85,1.15,nA);
+Agrid = exp(lnAgrid);
 Ngrid = linspace(0.9,0.97,nnn);
 EEerror_c = 999999*ones(nA,nk,nnn);
 EEerror_v = 999999*ones(nA,nk,nnn);
 
 for i_a = 1:nA
     a = Agrid(i_a);
-	lna_cheby = -1 + 2*( log(a) - min_lnA)/(max_lnA - min_lnA);
+	lna_cheby = lnAchebygrid(i_a);
     for i_k = 1:nk
         k = Kgrid(i_k);
         for i_n = 1:nnn
@@ -207,9 +205,8 @@ for i_a = 1:nA
 			% Find expected mh, mf tomorrow if current coeff applies tomorrow
 			EMH_hat = 0;
 			EMF_hat = 0;
-			for i_node = 1:n_nodes
-				eps = epsi_nodes(i_node);
-				lnaplus = rrho*log(a) + ssigma*eps;
+			for i_node = 1:nA
+				lnaplus = lnAgrid(i_node);
 				lnaplus_cheby = -1 + 2*(lnaplus-min_lnA)/(max_lnA-min_lnA);
 				if (lnaplus_cheby < -1 || lnaplus_cheby > 1)
 					error('Aplus out of bound')
@@ -219,8 +216,8 @@ for i_a = 1:nA
 				cplus = 1/(bbeta*exp(lnEMH_plus));
 				qplus = kkappa/cplus/(bbeta*exp(lnEMF_plus));
 				tthetaplus = (qplus/xxi)^(1/(eeta-1));
-				EMH_hat = EMH_hat + weight_nodes(i_node)*((1-ddelta+aalpha*exp(lnaplus)*(kplus/nplus)^(aalpha-1))/cplus);
-				EMF_hat = EMF_hat + weight_nodes(i_node)*(( (1-ttau)*((1-aalpha)*exp(lnaplus)*(kplus/nplus)^aalpha-z-ggamma*cplus) + (1-x)*kkappa/qplus - ttau*kkappa*tthetaplus )/cplus );
+				EMH_hat = EMH_hat + P(i_a,i_node)*((1-ddelta+aalpha*exp(lnaplus)*(kplus/nplus)^(aalpha-1))/cplus);
+				EMF_hat = EMF_hat + P(i_a,i_node)*(( (1-ttau)*((1-aalpha)*exp(lnaplus)*(kplus/nplus)^aalpha-z-ggamma*cplus) + (1-x)*kkappa/qplus - ttau*kkappa*tthetaplus )/cplus );
 			end        
 
 			c_imp = 1/(bbeta*EMH_hat);
@@ -233,14 +230,17 @@ for i_a = 1:nA
         end
     end
 end
-EEerror_c_inf = norm(EEerror_c(:),inf);
-EEerror_v_inf = norm(EEerror_v(:),inf);
+EEerror_c_inf = norm(EEerror_c(:),inf)
+EEerror_v_inf = norm(EEerror_v(:),inf)
 
 EEerror_c_mean = mean(EEerror_c(:));
 EEerror_v_mean = mean(EEerror_v(:));
 
 figure
-plot(lnKgrid,EEerror_c(ceil(nA/2),:,ceil(nnn/2)))
+plot(Kgrid,squeeze(EEerror_c(ceil(nA/2),:,ceil(nnn/2))))
+
+figure
+plot(Kgrid,squeeze(EEerror_v(ceil(nA/2),:,ceil(nnn/2))))
 
 %% Implied policy functions and find wages
 lnAgrid = csvread('../CUDA_VFI/results/Agrid.csv');
