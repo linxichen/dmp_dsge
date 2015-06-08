@@ -19,7 +19,7 @@ degree = 7;
 damp_factor = 0.0;
 maxiter = 10000;
 tol = 1e-4;
-options = optimoptions(@fsolve,'Display','notify-detailed','Jacobian','off');
+options = optimoptions(@fsolve,'Display','none','Jacobian','off');
 
 %% Grid creaton
 lnKgrid = ChebyshevRoots(nK,'Tn',[min_lnK,max_lnK]);
@@ -67,22 +67,22 @@ parfor i = 1:N
 end
 
 %% Create a initial guess from a rough PEA solution
-if (exist('PEA_Em.mat','file')==2)
-    load('PEA_Em.mat','coeff_mh','coeff_mf')
+if (exist('PEA_Em_cheby.mat','file')==2)
+    load('PEA_Em_cheby.mat','coeff_lnmh','coeff_lnmf')
 else
     coeff_mh = [2.197278872016918; -0.030892629079668; -0.581445054648990; -0.004225383144729]; % one constant, each for state variable
     coeff_mf = [2.281980399764238; 1.729203578753512; -0.315489670998162; -0.115805845378316];
 end
-lnEmh_train = zeros(N,1); lnEmf_train = zeros(N,1);
-parfor i = 1:N
-    [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);
-    lnEmh_train(i) = ([1 lnAgrid(i_a) lnKgrid(i_k) lnNgrid(i_n)]*coeff_mh);
-    lnEmf_train(i) = ([1 lnAgrid(i_a) lnKgrid(i_k) lnNgrid(i_n)]*coeff_mf)
-end
-coeff_lnmh = (X'*X)\(X'*(lnEmh_train));
-coeff_lnmf = (X'*X)\(X'*(lnEmf_train));
-coeff_lnmh_old = coeff_lnmh;
-coeff_lnmf_old = coeff_lnmf;
+% lnEmh_train = zeros(N,1); lnEmf_train = zeros(N,1);
+% parfor i = 1:N
+%     [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);
+%     lnEmh_train(i) = ([1 lnAgrid(i_a) lnKgrid(i_k) lnNgrid(i_n)]*coeff_mh);
+%     lnEmf_train(i) = ([1 lnAgrid(i_a) lnKgrid(i_k) lnNgrid(i_n)]*coeff_mf)
+% end
+% coeff_lnmh = (X'*X)\(X'*(lnEmh_train));
+% coeff_lnmf = (X'*X)\(X'*(lnEmf_train));
+% coeff_lnmh_old = coeff_lnmh;
+% coeff_lnmf_old = coeff_lnmf;
 
 lnEM_new = zeros(N,2);
 
@@ -98,7 +98,7 @@ opts.MaxIter = 10000;
 diff = 10; iter = 0;
 while (diff>tol && iter <= maxiter)
     %% Time iter step, find EMF EMH that solve euler exactly
-    parfor i = 1:N
+    for i = 1:N
         [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);
         state = [lnAgrid(i_a),lnKgrid(i_k),lnNgrid(i_n),tot_stuff(i),ustuff(i),i_a];
         lnEMH_guess = ChebyshevND(degree,[lnAchebygrid(i_a),lnKchebygrid(i_k),lnNchebygrid(i_n)])*coeff_lnmh;

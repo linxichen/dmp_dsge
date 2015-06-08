@@ -30,11 +30,11 @@ lnEMH = control(1);
 lnEMF = control(2);
 c = 1/(bbeta*exp(lnEMH));
 if c <= 0
-    error('negative consumption currently');
+    residual = 9e10; return;
 end
 q = kkappa/c/(bbeta*exp(lnEMF));
 if q <= 0
-    error('negative vacancy currently');
+    residual = 9e10; return;
 end
 v = (q/ustuff)^(1/(eeta-1));
 kplus = tot_stuff - c - kkappa*v;
@@ -44,12 +44,12 @@ lnkplus_cheby = -1 + 2*(lnkplus-min_lnK)/(max_lnK-min_lnK);
 lnnplus_cheby = -1 + 2*(lnnplus-min_lnN)/(max_lnN-min_lnN);
 if (lnkplus_cheby < -1 || lnkplus_cheby > 1)
     lnkplus
-    error('kplus out of bound')
+    residual = 9e10; return;
 end
 if (lnnplus_cheby < -1 || lnnplus_cheby > 1)
     lnnplus_cheby
     lnnplus
-    error('nplus out of bound')
+    residual = 9e10; return;
 end
 
 % Find expected mh, mf tomorrow if current coeff applies tomorrow
@@ -59,7 +59,7 @@ for i_node = 1:nA
 	lnaplus = lnAgrid(i_node);
     lnaplus_cheby = lnAchebygrid(i_node);
     if (lnaplus_cheby < -1 || lnaplus_cheby > 1)
-        error('Aplus out of bound')
+        residual = 9e10; return;
     end
     lnEMH_plus = ChebyshevND(degree,[lnaplus_cheby,lnkplus_cheby,lnnplus_cheby])*coeff_lnmh;
     lnEMF_plus = ChebyshevND(degree,[lnaplus_cheby,lnkplus_cheby,lnnplus_cheby])*coeff_lnmf;
@@ -71,7 +71,7 @@ for i_node = 1:nA
 end
 
 % Find violation in Euler equations
-residual(1) = c - bbeta*EMH_hat;
+residual(1) = 1/c - bbeta*EMH_hat;
 residual(2) = kkappa/c/q - bbeta*EMF_hat;
 
 end
