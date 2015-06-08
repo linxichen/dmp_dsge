@@ -7,9 +7,9 @@ addpath('../tools')
 
 %% Set the stage
 mypara;
-nA = 17;
+nA = 8;
 nK = 8;
-nN = 20;
+nN = 8;
 [P,lnAgrid] = rouwen(rrho,0,ssigma/sqrt(1-rrho^2),nA);
 P = P';
 min_lnA = lnAgrid(1); max_lnA = lnAgrid(end);
@@ -19,7 +19,7 @@ degree = 7;
 damp_factor = 0.0;
 maxiter = 10000;
 tol = 1e-4;
-options = optimoptions(@fsolve,'Display','final-detailed','Jacobian','off');
+options = optimoptions(@fsolve,'Display','notify-detailed','Jacobian','off');
 
 %% Grid creaton
 lnKgrid = ChebyshevRoots(nK,'Tn',[min_lnK,max_lnK]);
@@ -100,45 +100,11 @@ while (diff>tol && iter <= maxiter)
     %% Time iter step, find EMF EMH that solve euler exactly
     parfor i = 1:N
         [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);
-        state = [lnAgrid(i_a),lnKgrid(i_k),lnNgrid(i_n),tot_stuff(i),ustuff(i)];
-        lnEMH = ChebyshevND(degree,[lnAchebygrid(i_a),lnKchebygrid(i_k),lnNchebygrid(i_n)])*coeff_lnmh;
-        lnEMF = ChebyshevND(degree,[lnAchebygrid(i_a),lnKchebygrid(i_k),lnNchebygrid(i_n)])*coeff_lnmf;
-        c = 1/(bbeta*exp(lnEMH));
-        q = kkappa/c/(bbeta*exp(lnEMF));
-        v = (q/ustuff(i))^(1/(eeta-1));
-        kplus = tot_stuff(i) - c - kkappa*v;
-        nplus = (1-x)*exp(lnNgrid(i_n)) + q*v;
-        lnkplus = log(kplus); lnnplus = log(nplus);
-        lnkplus_cheby = -1 + 2*(lnkplus-min_lnK)/(max_lnK-min_lnK);
-        lnnplus_cheby = -1 + 2*(lnnplus-min_lnN)/(max_lnN-min_lnN);
-        if (lnkplus_cheby < -1 || lnkplus_cheby > 1)
-            lnkplus
-            error('kplus out of bound')
-        end
-        if (lnnplus_cheby < -1 || lnnplus_cheby > 1)
-            lnnplus_cheby
-            lnnplus
-            error('nplus out of bound')
-        end
-        
-        % Find expected mh, mf tomorrow if current coeff applies tomorrow
-        EMH_hat = 0;
-        EMF_hat = 0;
-        for i_node = 1:nA
-            lnaplus = lnAgrid(i_node);
-            lnaplus_cheby =lnAchebygrid(i_node);
-            if (lnaplus_cheby < -1 || lnaplus_cheby > 1)
-                error('Aplus out of bound')
-            end
-            lnEMH_plus = ChebyshevND(degree,[lnaplus_cheby,lnkplus_cheby,lnnplus_cheby])*coeff_lnmh;
-            lnEMF_plus = ChebyshevND(degree,[lnaplus_cheby,lnkplus_cheby,lnnplus_cheby])*coeff_lnmf;
-            cplus = 1/(bbeta*exp(lnEMH_plus));
-            qplus = kkappa/cplus/(bbeta*exp(lnEMF_plus));
-            tthetaplus = (qplus/xxi)^(1/(eeta-1));
-            EMH_hat = EMH_hat + P(i_a,i_node)*((1-ddelta+aalpha*exp(lnaplus)*(kplus/nplus)^(aalpha-1))/cplus);
-            EMF_hat = EMF_hat + P(i_a,i_node)*(( (1-ttau)*((1-aalpha)*exp(lnaplus)*(kplus/nplus)^aalpha-z-ggamma*cplus) + (1-x)*kkappa/qplus - ttau*kkappa*tthetaplus )/cplus );
-        end        
-        lnEM_new(i,:) = [log(EMH_hat),log(EMF_hat)];
+        state = [lnAgrid(i_a),lnKgrid(i_k),lnNgrid(i_n),tot_stuff(i),ustuff(i),i_a];
+        lnEMH_guess = ChebyshevND(degree,[lnAchebygrid(i_a),lnKchebygrid(i_k),lnNchebygrid(i_n)])*coeff_lnmh;
+        lnEMF_guess = ChebyshevND(degree,[lnAchebygrid(i_a),lnKchebygrid(i_k),lnNchebygrid(i_n)])*coeff_lnmf;
+        x0 = [lnEMH_guess,lnEMF_guess];
+        [lnEM_new(i,:),fval,exitflag] = nested_timeiter_obj(state,param,coeff_lnmh,coeff_lnmf,lnAgrid,lnAchebygrid,P,nA,x0,options);
     end
     coeff = (X'*X)\(X'*lnEM_new);
     coeff_lnmh_temp = coeff(:,1); coeff_lnmf_temp = coeff(:,2);
