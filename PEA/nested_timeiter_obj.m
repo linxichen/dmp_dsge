@@ -1,4 +1,4 @@
-function [x,fval,exitflag] = nested_timeiter_obj(state,param,coeff_lnmh,coeff_lnmf,epsi_nodes,weight_nodes,n_nodes,x0,options)
+function [x,fval,exitflag] = nested_timeiter_obj(state,param,coeff_lnc,coeff_lnv,lnAgrid,lnAchebygrid,P,nA,x0,options)
 % Call fmincon
 [x,fval,exitflag] = fsolve(@eulers,x0,options);
 
@@ -25,20 +25,14 @@ ttau = param(18);
 z = param(19);
 
 % Load variables
-lna = state(1); lnk = state(2); lnn = state(3); tot_stuff = state(4); ustuff = state(5);
-lnEMH = control(1);
-lnEMF = control(2);
-c = 1/(bbeta*exp(lnEMH));
-if c <= 0
-    error('negative consumption currently');
-end
-q = kkappa/c/(bbeta*exp(lnEMF));
-if q <= 0
-    error('negative vacancy currently');
-end
-v = (q/ustuff)^(1/(eeta-1));
+lna = state(1); lnk = state(2); lnn = state(3); tot_stuff = state(4); ustuff = state(5); i_a = state(6);
+lnc = control(1);
+lnv = control(2);
+c = exp(lnc);
+v = exp(lnv);
+q = ustuff*v^(eeta-1);
 kplus = tot_stuff - c - kkappa*v;
-nplus = (1-x)*exp(lnn) + q*v;
+nplus = (1-x)*exp(lnn) + ustuff*v^(eeta);
 lnkplus = log(kplus); lnnplus = log(nplus);
 lnkplus_cheby = -1 + 2*(lnkplus-min_lnK)/(max_lnK-min_lnK);
 lnnplus_cheby = -1 + 2*(lnnplus-min_lnN)/(max_lnN-min_lnN);
@@ -53,27 +47,27 @@ if (lnnplus_cheby < -1 || lnnplus_cheby > 1)
 end
 
 % Find expected mh, mf tomorrow if current coeff applies tomorrow
-lnEMH_hat = 0;
-lnEMF_hat = 0;
-for i_node = 1:n_nodes
-	eps = epsi_nodes(i_node);
-	lnaplus = rrho*lna + ssigma*eps;
-    lnaplus_cheby = -1 + 2*(lnaplus-min_lnA)/(max_lnA-min_lnA);
+EMH_hat = 0;
+EMF_hat = 0;
+for i_node = 1:nA
+	lnaplus = lnAgrid(i_node);
+    lnaplus_cheby = lnAchebygrid(i_node);
     if (lnaplus_cheby < -1 || lnaplus_cheby > 1)
         error('Aplus out of bound')
     end
-    lnEMH_plus = ChebyshevND(degree,[lnaplus_cheby,lnkplus_cheby,lnnplus_cheby])*coeff_lnmh;
-    lnEMF_plus = ChebyshevND(degree,[lnaplus_cheby,lnkplus_cheby,lnnplus_cheby])*coeff_lnmf;
-    cplus = 1/(bbeta*exp(lnEMH_plus));
-    qplus = kkappa/cplus/(bbeta*exp(lnEMF_plus));
-    tthetaplus = (qplus/xxi)^(1/(eeta-1));
-    lnEMH_hat = lnEMH_hat + weight_nodes(i_node)*((1-ddelta+aalpha*exp(lnaplus)*(kplus/nplus)^(aalpha-1))/cplus);
-    lnEMF_hat = lnEMF_hat + weight_nodes(i_node)*(( (1-ttau)*((1-aalpha)*exp(lnaplus)*(kplus/nplus)^aalpha-z-ggamma*cplus) + (1-x)*kkappa/qplus - ttau*kkappa*tthetaplus )/cplus );
+    lnc_plus = ChebyshevND(degree,[lnaplus_cheby,lnkplus_cheby,lnnplus_cheby])*coeff_lnc;
+    lnv_plus = ChebyshevND(degree,[lnaplus_cheby,lnkplus_cheby,lnnplus_cheby])*coeff_lnv;
+    cplus = exp(lnc_plus);
+    vplus = exp(lnv_plus);
+    qplus = xxi*(1-nplus)^(1-eeta)*vplus^(eeta-1);
+    tthetaplus = vplus/(1-nplus);
+    EMH_hat = EMH_hat + P(i_a,i_node)*((1-ddelta+aalpha*exp(lnaplus)*(kplus/nplus)^(aalpha-1))/cplus);
+    EMF_hat = EMF_hat + P(i_a,i_node)*(( (1-ttau)*((1-aalpha)*exp(lnaplus)*(kplus/nplus)^aalpha-z-ggamma*cplus) + (1-x)*kkappa/qplus - ttau*kkappa*tthetaplus )/cplus );
 end
 
 % Find violation in Euler equations
-residual(1) = c - bbeta*exp(lnEMH_hat);
-residual(2) = kkappa/c/q - bbeta*exp(lnEMF_hat);
+residual(1) = 1/c - bbeta*EMH_hat;
+residual(2) = kkappa/c/q - bbeta*EMF_hat;
 
 end
 

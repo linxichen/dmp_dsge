@@ -7,23 +7,21 @@ addpath('../tools')
 
 %% Set the stage
 mypara;
-[P_Rouw,z_Rouw] = rouwen(rrho,0,ssigma/sqrt(1-rrho^2),21);
 min_lnA = log(0.6); max_lnA = log(1.4);
 min_lnK = log(500); max_lnK = log(2500);
 min_lnN = log(0.5); max_lnN = log(1.0);
 degree = 7;
 nA = 10;
-nK = 20;
-nN = 50;
+nK = 10;
+nN = 10;
 damp_factor = 0.5;
 maxiter = 10000;
 tol = 1e-3;
-options = optimoptions(@fsolve,'Display','final-detailed','Jacobian','off');
-[epsi_nodes,weight_nodes] = GH_nice(7,0,1);
-n_nodes = length(epsi_nodes);
+options = optimoptions(@fsolve,'Display','none','Jacobian','off');
 
 %% Grid creaton
-lnAgrid = ChebyshevRoots(nA,'Tn',[log(0.85),log(1.15)]);
+[P,lnAgrid] = rouwen(rrho,0,ssigma/sqrt(1-rrho^2),nA);
+P = P';
 lnKgrid = ChebyshevRoots(nK,'Tn',[min_lnK,max_lnK]);
 lnNgrid = ChebyshevRoots(nN,'Tn',[min_lnN,max_lnN]);
 lnAchebygrid = ChebyshevRoots(nA,'Tn');
@@ -81,6 +79,8 @@ lnc_guess = zeros(N,1); lnv_guess = zeros(N,1);
 parfor i = 1:N
     [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);
     a = exp(lnAgrid(i_a)); k  = exp(lnKgrid(i_k)); n = exp(lnNgrid(i_n)); %#ok<PFBNS>
+
+    
     lnEMH = ChebyshevND(degree,[lnAchebygrid(i_a),lnKchebygrid(i_k),lnNchebygrid(i_n)])*coeff_lnmh;
     lnEMF = ChebyshevND(degree,[lnAchebygrid(i_a),lnKchebygrid(i_k),lnNchebygrid(i_n)])*coeff_lnmf;
     c_guess = 1/(bbeta*exp(lnEMH));
@@ -114,55 +114,13 @@ while (diff>tol && iter <= maxiter)
     %% Fixed point iter step, find EMF EMH that solve euler exactly
     parfor i = 1:N
         [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);
-        state = [lnAgrid(i_a),lnKgrid(i_k),lnNgrid(i_n),tot_stuff(i),ustuff(i)];
-        
-        lnc = ChebyshevND(degree,[lnAchebygrid(i_a),lnKchebygrid(i_k),lnNchebygrid(i_n)])*coeff_lnc;
-        lnv = ChebyshevND(degree,[lnAchebygrid(i_a),lnKchebygrid(i_k),lnNchebygrid(i_n)])*coeff_lnv;
-        c = exp(lnc);
-        v = exp(lnv);
-        kplus = tot_stuff(i) - c - kkappa*v;
-        nplus = (1-x)*exp(lnNgrid(i_n)) + ustuff(i)*v^eeta;
-        lnkplus = log(kplus); lnnplus = log(nplus);
-        lnkplus_cheby = -1 + 2*(lnkplus-min_lnK)/(max_lnK-min_lnK);
-        lnnplus_cheby = -1 + 2*(lnnplus-min_lnN)/(max_lnN-min_lnN);
-        if (lnkplus_cheby < -1 || lnkplus_cheby > 1)
-            lnkplus
-            error('kplus out of bound')
-        end
-        if (lnnplus_cheby < -1 || lnnplus_cheby > 1)
-            lnnplus_cheby
-            lnnplus
-            error('nplus out of bound')
-        end
-        
-        % Find expected mh, mf tomorrow if current coeff applies tomorrow
-        EMH_hat = 0;
-        EMF_hat = 0;
-        for i_node = 1:n_nodes
-            eps = epsi_nodes(i_node);
-            lnaplus = rrho*lnAgrid(i_a) + ssigma*eps;
-            lnaplus_cheby = -1 + 2*(lnaplus-min_lnA)/(max_lnA-min_lnA);
-            if (lnaplus_cheby < -1 || lnaplus_cheby > 1)
-				lnAgrid(i_a)
-				lnaplus
-                error('Aplus out of bound')
-            end
-            lnc_plus = ChebyshevND(degree,[lnaplus_cheby,lnkplus_cheby,lnnplus_cheby])*coeff_lnc;
-            lnv_plus = ChebyshevND(degree,[lnaplus_cheby,lnkplus_cheby,lnnplus_cheby])*coeff_lnv;
-            cplus = exp(lnc_plus);
-            vplus = exp(lnv_plus);
-            tthetaplus = vplus/(1-nplus);
-            qplus = xxi*tthetaplus^(eeta-1);
-            EMH_hat = EMH_hat + weight_nodes(i_node)*((1-ddelta+aalpha*exp(lnaplus)*(kplus/nplus)^(aalpha-1))/cplus);
-            EMF_hat = EMF_hat + weight_nodes(i_node)*(( (1-ttau)*((1-aalpha)*exp(lnaplus)*(kplus/nplus)^aalpha-z-ggamma*cplus) + (1-x)*kkappa/qplus - ttau*kkappa*tthetaplus )/cplus );
-        end    
-        c_new = 1/(bbeta*EMH_hat);
-        q_new = kkappa/c_new/(bbeta*EMF_hat);
-        ttheta_new = (q_new/xxi)^(1/(eeta-1));
-        v_new = ttheta_new*(1-exp(lnNgrid(i_n)));
-        lnpolicy_new(i,:) = [log(c_new),log(v_new)];
+        state = [lnAgrid(i_a),lnKgrid(i_k),lnNgrid(i_n),tot_stuff(i),ustuff(i),i_a];
+        lnc_guess = ChebyshevND(degree,[lnAchebygrid(i_a),lnKchebygrid(i_k),lnNchebygrid(i_n)])*coeff_lnc;
+        lnv_guess = ChebyshevND(degree,[lnAchebygrid(i_a),lnKchebygrid(i_k),lnNchebygrid(i_n)])*coeff_lnv;
+        x0 = [lnc_guess,lnv_guess];
+        [lnpolicy_new(i,:),fval,exitflag] = nested_timeiter_obj(state,param,coeff_lnc,coeff_lnv,lnAgrid,lnAchebygrid,P,nA,x0,options);
     end
-    coeff = inv(X'*X)*(X'*lnpolicy_new);
+    coeff = (X'*X)\(X'*lnpolicy_new);
     coeff_lnc_temp = coeff(:,1); coeff_lnv_temp = coeff(:,2);
     
     %% Damped update
