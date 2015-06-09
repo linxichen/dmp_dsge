@@ -1,4 +1,4 @@
-function [x,fval,exitflag] = nested_timeiter_obj(state,param,coeff_lnc,coeff_lnv,lnAgrid,lnAchebygrid,P,nA,x0,options)
+function [x,fval,exitflag] = nested_timeiter_obj(state,param,coeff_c,coeff_v,lnAgrid,lnAchebygrid,P,nA,x0,options)
 % Call fmincon
 [x,fval,exitflag] = fsolve(@eulers,x0,options);
 
@@ -26,10 +26,8 @@ z = param(19);
 
 % Load variables
 lna = state(1); lnk = state(2); lnn = state(3); tot_stuff = state(4); ustuff = state(5); i_a = state(6);
-lnc = control(1);
-lnv = control(2);
-c = exp(lnc);
-v = exp(lnv);
+c = control(1);
+v = control(2);
 q = ustuff*v^(eeta-1);
 kplus = tot_stuff - c - kkappa*v;
 nplus = (1-x)*exp(lnn) + ustuff*v^(eeta);
@@ -53,12 +51,10 @@ for i_node = 1:nA
 	lnaplus = lnAgrid(i_node);
     lnaplus_cheby = lnAchebygrid(i_node);
     if (lnaplus_cheby < -1 || lnaplus_cheby > 1)
-        error('Aplus out of bound')
+        error('Aplus out of bound') 
     end
-    lnc_plus = ChebyshevND(degree,[lnaplus_cheby,lnkplus_cheby,lnnplus_cheby])*coeff_lnc;
-    lnv_plus = ChebyshevND(degree,[lnaplus_cheby,lnkplus_cheby,lnnplus_cheby])*coeff_lnv;
-    cplus = exp(lnc_plus);
-    vplus = exp(lnv_plus);
+    cplus = ChebyshevND(degree,[lnaplus_cheby,lnkplus_cheby,lnnplus_cheby])*coeff_c;
+    vplus = ChebyshevND(degree,[lnaplus_cheby,lnkplus_cheby,lnnplus_cheby])*coeff_v;
     qplus = xxi*(1-nplus)^(1-eeta)*vplus^(eeta-1);
     tthetaplus = vplus/(1-nplus);
     EMH_hat = EMH_hat + P(i_a,i_node)*((1-ddelta+aalpha*exp(lnaplus)*(kplus/nplus)^(aalpha-1))/cplus);
