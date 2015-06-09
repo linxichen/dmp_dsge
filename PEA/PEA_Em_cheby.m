@@ -7,9 +7,9 @@ addpath('../tools')
 
 %% Set the stage
 mypara;
-nA = 8;
-nK = 8;
-nN = 8;
+nA = 17;
+nK = 30;
+nN = 50;
 [P,lnAgrid] = rouwen(rrho,0,ssigma/sqrt(1-rrho^2),nA);
 P = P';
 min_lnA = lnAgrid(1); max_lnA = lnAgrid(end);
@@ -19,7 +19,7 @@ degree = 7;
 damp_factor = 0.0;
 maxiter = 10000;
 tol = 1e-4;
-options = optimoptions(@fsolve,'Display','final-detailed','Jacobian','off');
+options = optimoptions(@fsolve,'Display','none','Jacobian','off');
 
 %% Grid creaton
 lnKgrid = ChebyshevRoots(nK,'Tn',[min_lnK,max_lnK]);
