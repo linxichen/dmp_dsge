@@ -72,31 +72,31 @@ coeff_c(1) = (c_ss);
 coeff_v(1) = (v_ss);
 
 %% Create a initial guess from a rough PEA solution
-if (exist('PEA_Em_cheby.mat','file')==2)
-	load('PEA_Em_cheby.mat','coeff_lnmh','coeff_lnmf');
-end
-c_guess = zeros(N,1); v_guess = zeros(N,1);
-parfor i = 1:N
-    [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);
-    a = exp(lnAgrid(i_a)); k  = exp(lnKgrid(i_k)); n = exp(lnNgrid(i_n)); %#ok<PFBNS>
-
-    
-    lnEMH = ChebyshevND(degree,[lnAchebygrid(i_a),lnKchebygrid(i_k),lnNchebygrid(i_n)])*coeff_lnmh;
-    lnEMF = ChebyshevND(degree,[lnAchebygrid(i_a),lnKchebygrid(i_k),lnNchebygrid(i_n)])*coeff_lnmf;
-    c_guess = 1/(bbeta*exp(lnEMH));
-    q_guess = kkappa/c_guess/(bbeta*exp(lnEMF));
-    ttheta_guess = (q_guess/xxi)^(eeta-1);
-    v_guess = ttheta_guess*(1-exp(lnNgrid(i_n)));
-    c_guess(i) = (c_guess);
-    v_guess(i) = (v_guess);
-end
-temp_lnc = X'*c_guess;
-temp_lnv = X'*v_guess;
-temp_X = X'*X;
-parfor i_term = 1:K
-    coeff_lnc(i_term) = temp_lnc(i_term)/temp_X(i_term,i_term);
-    coeff_lnv(i_term) = temp_lnv(i_term)/temp_X(i_term,i_term);
-end
+% if (exist('PEA_Em_cheby.mat','file')==2)
+% 	load('PEA_Em_cheby.mat','coeff_lnmh','coeff_lnmf');
+% end
+% c_guess = zeros(N,1); v_guess = zeros(N,1);
+% parfor i = 1:N
+%     [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);
+%     a = exp(lnAgrid(i_a)); k  = exp(lnKgrid(i_k)); n = exp(lnNgrid(i_n)); %#ok<PFBNS>
+% 
+%     
+%     lnEMH = ChebyshevND(degree,[lnAchebygrid(i_a),lnKchebygrid(i_k),lnNchebygrid(i_n)])*coeff_lnmh;
+%     lnEMF = ChebyshevND(degree,[lnAchebygrid(i_a),lnKchebygrid(i_k),lnNchebygrid(i_n)])*coeff_lnmf;
+%     c_guess = 1/(bbeta*exp(lnEMH));
+%     q_guess = kkappa/c_guess/(bbeta*exp(lnEMF));
+%     ttheta_guess = (q_guess/xxi)^(eeta-1);
+%     v_guess = ttheta_guess*(1-exp(lnNgrid(i_n)));
+%     c_guess(i) = (c_guess);
+%     v_guess(i) = (v_guess);
+% end
+% temp_lnc = X'*c_guess;
+% temp_lnv = X'*v_guess;
+% temp_X = X'*X;
+% parfor i_term = 1:K
+%     coeff_lnc(i_term) = temp_lnc(i_term)/temp_X(i_term,i_term);
+%     coeff_lnv(i_term) = temp_lnv(i_term)/temp_X(i_term,i_term);
+% end
 
 policy_new = zeros(N,2);
 
