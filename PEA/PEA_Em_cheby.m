@@ -7,15 +7,15 @@ addpath('../tools')
 
 %% Set the stage
 mypara;
-nA = 11;
-nK = 11;
-nN = 11;
+nA = 21;
+nK = 21;
+nN = 21;
 [P,lnAgrid] = rouwen(rrho,0,ssigma/sqrt(1-rrho^2),nA);
 P = P';
 min_lnA = lnAgrid(1); max_lnA = lnAgrid(end);
 min_lnK = log(900); max_lnK = log(1900);
 min_lnN = log(0.5); max_lnN = log(0.9999);
-degree = 7;
+degree = 15;
 damp_factor = 0.0;
 maxiter = 10000;
 tol = 1e-10;
@@ -67,12 +67,15 @@ parfor i = 1:N
 end
 
 %% Create a initial guess from a rough PEA solution
-if (exist('PEA_Em_cheby.mat','file')==2)
-    load('PEA_Em_cheby.mat','coeff_lnmh','coeff_lnmf')
-else
-    coeff_mh = [2.197278872016918; -0.030892629079668; -0.581445054648990; -0.004225383144729]; % one constant, each for state variable
-    coeff_mf = [2.281980399764238; 1.729203578753512; -0.315489670998162; -0.115805845378316];
-end
+coeff_lnmh = zeros(K,1); coeff_lnmf = zeros(K,1);
+coeff_lnmh(1) = log(1/c_ss/bbeta);
+coeff_lnmf(1) = log(kkappa/c_ss/xxi/bbeta);
+% if (exist('PEA_Em_cheby.mat','file')==2)
+%     load('PEA_Em_cheby.mat','coeff_lnmh','coeff_lnmf')
+% else
+%     coeff_mh = [2.197278872016918; -0.030892629079668; -0.581445054648990; -0.004225383144729]; % one constant, each for state variable
+%     coeff_mf = [2.281980399764238; 1.729203578753512; -0.315489670998162; -0.115805845378316];
+% end
 % lnEmh_train = zeros(N,1); lnEmf_train = zeros(N,1);
 % parfor i = 1:N
 %     [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);

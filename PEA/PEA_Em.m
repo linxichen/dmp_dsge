@@ -9,10 +9,10 @@ addpath('../tools')
 mypara;
 
 damp_factor = 0.1;
-T = 10000;
+T = 100000;
 burnin = ceil(0.1*T);
 maxiter = 10000;
-tol = 1e-6;
+tol = 1e-13;
 ksim = zeros(1,T);
 nsim = ksim;
 Asim = ksim;
