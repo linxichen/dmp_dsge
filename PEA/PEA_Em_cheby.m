@@ -7,15 +7,15 @@ addpath('../tools')
 
 %% Set the stage
 mypara;
-nA = 21;
-nK = 21;
-nN = 21;
+nA = 10;
+nK = 11;
+nN = 12;
 [P,lnAgrid] = rouwen(rrho,0,ssigma/sqrt(1-rrho^2),nA);
 P = P';
 min_lnA = lnAgrid(1); max_lnA = lnAgrid(end);
 min_lnK = log(900); max_lnK = log(1900);
-min_lnN = log(0.5); max_lnN = log(0.9999);
-degree = 15;
+min_lnN = log(0.5); max_lnN = log(1.0);
+degree = 9;
 damp_factor = 0.0;
 maxiter = 10000;
 tol = 1e-10;
@@ -28,6 +28,8 @@ lnAchebygrid = ChebyshevRoots(nA,'Tn');
 lnKchebygrid = ChebyshevRoots(nK,'Tn');
 lnNchebygrid = ChebyshevRoots(nN,'Tn');
 N = nA*nK*nN;
+[Kmesh,Amesh,Nmesh] = meshgrid(lnKgrid,lnAgrid,lnNgrid);
+
 
 [fakebasis,order_table] = ChebyshevND(degree,[0,0,0]);
 K = size(fakebasis,2);
@@ -88,6 +90,11 @@ coeff_lnmf(1) = log(kkappa/c_ss/xxi/bbeta);
 % coeff_lnmf_old = coeff_lnmf;
 
 lnEM_new = zeros(N,2);
+lnKgrid_endo = zeros(N,1);
+lnNgrid_endo = zeros(N,1);
+lnAgrid_endo = zeros(N,1);
+lnEMH_endo = zeros(N,1);
+lnEMF_endo = zeros(N,1);
 
 %% Solve for SS
 kss = k_ss;
@@ -100,17 +107,41 @@ opts.Display = 'final';
 opts.MaxIter = 10000;
 diff = 10; iter = 0;
 while (diff>tol && iter <= maxiter)
-    %% Time iter step, find EMF EMH that solve euler exactly
+    %% Time iter step, uses endo grid technique
     parfor i = 1:N
-        [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);
-        state = [lnAgrid(i_a),lnKgrid(i_k),lnNgrid(i_n),tot_stuff(i),ustuff(i),i_a];
-        lnEMH_guess = ChebyshevND(degree,[lnAchebygrid(i_a),lnKchebygrid(i_k),lnNchebygrid(i_n)])*coeff_lnmh;
-        lnEMF_guess = ChebyshevND(degree,[lnAchebygrid(i_a),lnKchebygrid(i_k),lnNchebygrid(i_n)])*coeff_lnmf;
-        x0 = [lnEMH_guess,lnEMF_guess];
-        [lnEM_new(i,:),fval,exitflag] = nested_timeiter_obj(state,param,coeff_lnmh,coeff_lnmf,lnAgrid,lnAchebygrid,P,nA,x0,options);
+        [i_a,i_kplus,i_nplus] = ind2sub([nA,nK,nN],i);
+        nplus = exp(lnNgrid(i_nplus)); kplus = exp(lnKgrid(i_kplus));
+        EMH = 0; EMF = 0;
+        for i_node = 1:nA
+            lnaplus = lnAgrid(i_node);
+            lnaplus_cheby = lnAchebygrid(i_node);
+            lnEMH_plus = ChebyshevND(degree,[lnaplus_cheby,lnKchebygrid(i_kplus),lnNchebygrid(i_nplus)])*coeff_lnmh;
+            lnEMF_plus = ChebyshevND(degree,[lnaplus_cheby,lnKchebygrid(i_kplus),lnNchebygrid(i_nplus)])*coeff_lnmf;
+            cplus = 1/(bbeta*exp(lnEMH_plus));
+            qplus = kkappa/cplus/(bbeta*exp(lnEMF_plus));
+            tthetaplus = (qplus/xxi)^(1/(eeta-1));
+            EMH = EMH + P(i_a,i_node)*((1-ddelta+aalpha*exp(lnaplus)*(kplus/nplus)^(aalpha-1))/cplus);
+            EMF = EMF + P(i_a,i_node)*(( (1-ttau)*((1-aalpha)*exp(lnaplus)*(kplus/nplus)^aalpha-z-ggamma*cplus) + (1-x)*kkappa/qplus - ttau*kkappa*tthetaplus )/cplus );
+        end
+        c = 1/(bbeta*EMH);
+        q = kkappa/c/(bbeta*EMF);
+        ttheta = (q/xxi)^(eeta-1);
+        n = (nplus-q*ttheta)/(1-x-q*ttheta);
+        v = ttheta*(1-n);
+        findk = @(k) exp(lnAgrid(i_a))*k^aalpha*n^(1-aalpha)+z*(1-n)+(1-ddelta)*k-kkappa*v-c-kplus;
+        x0 = kplus;
+        [k,fval,exitflag] = fsolve(findk,x0,options);
+        
+        lnKgrid_endo(i) = log(k); lnNgrid_endo(i) = log(n); lnAgrid_endo(i) = lnAgrid(i_a);
+        lnEMH_endo(i) = log(EMH); lnEMF_endo(i) = log(EMF);     
     end
-    coeff = (X'*X)\(X'*lnEM_new);
-    coeff_lnmh_temp = coeff(:,1); coeff_lnmf_temp = coeff(:,2);
+    
+    %% Interpolation to find values at
+    F_EMH = scatteredInterpolant(lnAgrid_endo,lnKgrid_endo,lnNgrid_endo,lnEMH_endo,'linear','linear');
+    F_EMF = scatteredInterpolant(lnAgrid_endo,lnKgrid_endo,lnNgrid_endo,lnEMF_endo);
+    lnEMH_new = F_EMH(Amesh,Kmesh,Nmesh);
+    lnEMF_new = F_EMF(Amesh,Kmesh,Nmesh);
+    coeff_lnmh_temp = (X'*X)\(X'*lnEMH_new(:)); coeff_lnmf_temp = (X'*X)\(X'*lnEMF_new(:));
     
     %% Damped update
     coeff_lnmh_new = (1-damp_factor)*coeff_lnmh_temp+(damp_factor)*coeff_lnmh;
