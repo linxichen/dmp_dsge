@@ -7,9 +7,9 @@ addpath('../tools')
 
 %% Set the stage
 mypara;
-nA = 17;
-nK = 30;
-nN = 50;
+nA = 11;
+nK = 11;
+nN = 11;
 [P,lnAgrid] = rouwen(rrho,0,ssigma/sqrt(1-rrho^2),nA);
 P = P';
 min_lnA = lnAgrid(1); max_lnA = lnAgrid(end);
@@ -18,7 +18,7 @@ min_lnN = log(0.5); max_lnN = log(0.9999);
 degree = 7;
 damp_factor = 0.0;
 maxiter = 10000;
-tol = 1e-4;
+tol = 1e-10;
 options = optimoptions(@fsolve,'Display','none','Jacobian','off');
 
 %% Grid creaton
