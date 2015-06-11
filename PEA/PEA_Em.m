@@ -126,7 +126,7 @@ md_mh = fitlm(X(:,2:end),ln_mh,'linear','RobustOpts','on')
 md_mf = fitlm(X(:,2:end),ln_mf,'linear','RobustOpts','on')
 
 %% Euler equation error
-nk = 50; nA = 50; nnn = 50;
+nk = 10; nA = 10; nnn = 10;
 Kgrid = linspace(0.8*kss,1.2*kss,nk);
 Agrid = linspace(0.8,1.2,nA);
 Ngrid = linspace(0.7,0.999,nnn);
