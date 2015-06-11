@@ -9,7 +9,7 @@ addpath('../tools')
 mypara;
 
 damp_factor = 0.1;
-T = 100000;
+T = 1000000;
 burnin = ceil(0.1*T);
 maxiter = 10000;
 tol = 1e-9;
@@ -21,12 +21,8 @@ mfsim = ksim;
 Emfsim = ksim;
 Emhsim = ksim;
 
-if (exist('PEA_Em.mat','file')==2)
-    load('PEA_Em.mat','coeff_mh','coeff_mf')
-else
-    coeff_mh = [2.197278872016918; -0.030892629079668; -0.581445054648990; -0.004225383144729]; % one constant, each for state variable
-    coeff_mf = [2.281980399764238; 1.729203578753512; -0.315489670998162; -0.115805845378316];
-end
+coeff_mh = [2.250582848688097;-0.041538594091094; -0.608085735012737; -0.004307562103536]; % one constant, each for state variable
+coeff_mf = [2.360702767013193; 2.202904105671854; -0.365624535553772; -0.011727921558530];
 
 coeff_mh_old = coeff_mh;
 coeff_mf_old = coeff_mf;
@@ -37,7 +33,6 @@ regeqn_mf = @(b,x) exp(b(1)*x(:,1)+b(2).*log(x(:,2))+b(3).*log(x(:,3))+b(4).*log
 %% Solve for SS
 kss = k_ss;
 nss = n_ss;
-
 
 %% Simulate shocks
 rng('default')
@@ -180,7 +175,7 @@ EEerror_c_mean = mean(EEerror_c(:));
 EEerror_v_mean = mean(EEerror_v(:));
 
 figure
-plot(Kgrid,EEerror_c(ceil(nA/2),:,ceil(nnn/2)))
+plot(Kgrid,EEerror_v(ceil(nA/2),:,ceil(nnn/2)))
 
 %% Implied policy functions and find wages
 Agrid = csvread('../CUDA_VFI/results/Agrid.csv');
