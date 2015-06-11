@@ -70,8 +70,17 @@ end
 
 %% Create a initial guess from a rough PEA solution
 coeff_lnmh = zeros(K,1); coeff_lnmf = zeros(K,1);
-coeff_lnmh(1) = log(1/c_ss/bbeta);
-coeff_lnmf(1) = log(kkappa/c_ss/xxi/bbeta);
+coeff_lnmh(1) = 2.25112947095552;
+coeff_lnmh(2) = -0.00422995273814383;
+coeff_lnmh(3) = -0.608159319666493;
+coeff_lnmh(4) = -0.0414379097902152;
+
+coeff_lnmf(1) = 2.37578644280901;
+coeff_lnmf(2) = -0.0371929066636178;
+coeff_lnmf(3) = -0.367492859368021;
+coeff_lnmf(4) = 2.17598356908754;
+
+
 % if (exist('PEA_Em_cheby.mat','file')==2)
 %     load('PEA_Em_cheby.mat','coeff_lnmh','coeff_lnmf')
 % else
