@@ -14,7 +14,7 @@ nN = 12;
 P = P';
 min_lnA = lnAgrid(1); max_lnA = lnAgrid(end);
 min_lnK = log(900); max_lnK = log(1900);
-min_lnN = log(0.5); max_lnN = log(1.0);
+min_lnN = log(0.5); max_lnN = log(0.99);
 degree = 9;
 damp_factor = 0.0;
 maxiter = 10000;
