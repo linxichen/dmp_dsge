@@ -137,8 +137,8 @@ while (diff>tol && iter <= maxiter)
     end
     
     %% Interpolation to find values at
-    F_EMH = scatteredInterpolant(lnAgrid_endo,lnKgrid_endo,lnNgrid_endo,lnEMH_endo,'linear','linear');
-    F_EMF = scatteredInterpolant(lnAgrid_endo,lnKgrid_endo,lnNgrid_endo,lnEMF_endo);
+    F_EMH = scatteredInterpolant(lnAgrid_endo,lnKgrid_endo,lnNgrid_endo,lnEMH_endo,'natural','linear');
+    F_EMF = scatteredInterpolant(lnAgrid_endo,lnKgrid_endo,lnNgrid_endo,lnEMF_endo,'natural','linear');
     lnEMH_new = F_EMH(Amesh,Kmesh,Nmesh);
     lnEMF_new = F_EMF(Amesh,Kmesh,Nmesh);
     coeff_lnmh_temp = (X'*X)\(X'*lnEMH_new(:)); coeff_lnmf_temp = (X'*X)\(X'*lnEMF_new(:));
