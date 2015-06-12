@@ -12,7 +12,7 @@ damp_factor = 0.1;
 T = 1000000;
 burnin = ceil(0.1*T);
 maxiter = 10000;
-tol = 1e-9;
+tol = 1e-4;
 ksim = zeros(1,T);
 nsim = ksim;
 Asim = ksim;
@@ -20,9 +20,11 @@ mhsim = ksim;
 mfsim = ksim;
 Emfsim = ksim;
 Emhsim = ksim;
+coeff_mh = zeros(10,1);
+coeff_mf = zeros(10,1);
 
-coeff_mh = [2.250582848688097;-0.041538594091094; -0.608085735012737; -0.004307562103536]; % one constant, each for state variable
-coeff_mf = [2.360702767013193; 2.202904105671854; -0.365624535553772; -0.011727921558530];
+coeff_mh(1:4) = [2.247337592951108;-0.041544383160081;-0.607644008294761;-0.004314696290213]; % one constant, each for state variable
+coeff_mf(1:4) = [2.351435745790115 ;2.203515288267346;-0.364368568546649;-0.011952817385299];
 
 coeff_mh_old = coeff_mh;
 coeff_mf_old = coeff_mf;
@@ -58,7 +60,7 @@ for t = 1:T
     state(1) = Asim(t);
     state(2) = ksim(t);
     state(3) = nsim(t);
-    EM = exp([1 log(state)]*[coeff_mh coeff_mf]);
+    EM = exp([1 log(state) log(nsim(t))^2 log(ksim(t))*log(nsim(t)) log(ksim(t))^2 log(Asim(t))*log(nsim(t)) log(Asim(t))*log(ksim(t)) log(Asim(t))^2 ]*[coeff_mh coeff_mf]);
     
     y = Asim(t)*(ksim(t))^(aalpha)*(nsim(t))^(1-aalpha);
     c = (bbeta*EM(1))^(-1);
@@ -78,7 +80,7 @@ for t = 1:T
             state(1) = Aplus;
             state(2) = ksim(t+1);
             state(3) = nsim(t+1);
-            EM = exp([1 log(state)]*[coeff_mh coeff_mf]);
+			EM = exp([1 log(state) log(nsim(t+1))^2 log(ksim(t+1))*log(nsim(t+1)) log(ksim(t+1))^2 log(Asim(t+1))*log(nsim(t+1)) log(Asim(t+1))*log(ksim(t+1)) log(Asim(t+1))^2 ]*[coeff_mh coeff_mf]);
             yplus = Aplus*(ksim(t+1))^(aalpha)*(nsim(t+1))^(1-aalpha);
             cplus = (bbeta*EM(1))^(-1);
             tthetaplus = (kkappa/(cplus*xxi*bbeta*EM(2)))^(1/(eeta-1));
@@ -93,7 +95,10 @@ end
 %% Get temp coeff
 ln_mh = log(Emhsim(burnin+1:end-1)');
 ln_mf = log(Emfsim(burnin+1:end-1)');
-X = [ones(T-burnin-1,1) log(Asim(burnin+1:end-1)') log(ksim(burnin+1:end-1)') log(nsim(burnin+1:end-1)')];
+ln_a = log(Asim(burnin+1:end-1)');
+ln_k = log(ksim(burnin+1:end-1)');
+ln_n = log(nsim(burnin+1:end-1)');
+X = [ones(T-burnin-1,1) ln_a ln_k ln_n ln_n.*ln_n ln_k.*ln_n ln_k.^2 ln_a.*ln_n ln_a.*ln_k ln_a.^2];
 coeff_mh_temp = (X'*X)\(X'*ln_mh);
 coeff_mf_temp = (X'*X)\(X'*ln_mf);
 
@@ -137,7 +142,7 @@ for i_A = 1:nA
             state(1) = A;
             state(2) = k;
             state(3) = n;
-            EM = exp([1 log(state)]*[coeff_mh coeff_mf]);
+			EM = exp([1 log(state) log(Ngrid(i_n))^2 log(Kgrid(i_k))*log(Ngrid(i_n)) log(Kgrid(i_k))^2 log(Agrid(i_A))*log(Ngrid(i_n)) log(Agrid(i_A))*log(Kgrid(i_k)) log(Agrid(i_A))^2 ]*[coeff_mh coeff_mf]);
             
             y = A*(k)^(aalpha)*(n)^(1-aalpha);
             c = (bbeta*EM(1))^(-1);
@@ -153,7 +158,7 @@ for i_A = 1:nA
                 state(1) = Aplus;
                 state(2) = kplus;
                 state(3) = nplus;
-                EM = exp([1 log(state)]*[coeff_mh coeff_mf]);
+				EM = exp([1 log(state) log(nplus)^2 log(kplus)*log(nplus) log(kplus)^2 log(Aplus)*log(nplus) log(Aplus)*log(kplus) log(Aplua)^2 ]*[coeff_mh coeff_mf]);
                 yplus = Aplus*(kplus)^(aalpha)*(nplus)^(1-aalpha);
                 cplus = (bbeta*EM(1))^(-1);
                 tthetaplus = (kkappa/(cplus*xxi*bbeta*EM(2)))^(1/(eeta-1));
