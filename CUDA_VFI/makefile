@@ -1,9 +1,9 @@
 # Paths for Linux CUDA
-ICUDA    = /usr/local/cuda-7.0/include
-LCUDA    = /usr/local/cuda-7.0/lib64
+ICUDA    = /usr/local/cuda-7.5/include
+LCUDA    = /usr/local/cuda-7.5/lib64
 LCUDA65  = /usr/local/cuda-6.5/lib64
-ICUDA_MAC = /Developer/NVIDIA/CUDA-7.0/include
-LCUDA_MAC = /Developer/NVIDIA/CUDA-7.0/lib
+ICUDA_MAC = /Developer/NVIDIA/CUDA-7.5/include
+LCUDA_MAC = /Developer/NVIDIA/CUDA-7.5/lib
 ICPP_MAC = /usr/local/include
 LCPP_MAC = /usr/local/lib
 ILAPACK = /usr/include/lapacke
